@@ -1022,10 +1022,10 @@
                     </div>
                     <div class="card-actions">
                         <button class="btn btn-sm btn-info" onclick="exportRequests()">
-                            <i class="fas fa-download"></i> Export
+                            <i class="fas fa-upload"></i> Export
                         </button>
                         <button class="btn btn-sm btn-warning" onclick="importRequests()">
-                            <i class="fas fa-upload"></i> Import
+                            <i class="fas fa-download"></i> Import
                         </button>
                     </div>
                 </div>
@@ -1325,12 +1325,12 @@
             const headerRow = document.createElement('div');
             headerRow.className = 'header-row';
             headerRow.innerHTML = `
-                                            <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
-                                            <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
-                                            <button class="header-remove" onclick="this.parentElement.remove()">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        `;
+                                                <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
+                                                <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
+                                                <button class="header-remove" onclick="this.parentElement.remove()">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            `;
             elements.headersContainer.appendChild(headerRow);
         }
 
@@ -1435,19 +1435,19 @@
                 // Update metadata
                 const statusClass = response.ok ? 'success' : 'error';
                 elements.responseMeta.innerHTML = `
-                                                <div class="meta-item status ${statusClass}">
-                                                    <i class="fas fa-circle"></i>
-                                                    ${response.status} ${response.statusText}
-                                                </div>
-                                                <div class="meta-item">
-                                                    <i class="fas fa-clock"></i>
-                                                    ${duration}ms
-                                                </div>
-                                                <div class="meta-item">
-                                                    <i class="fas fa-weight-hanging"></i>
-                                                    ${formatBytes(responseText.length)}
-                                                </div>
-                                            `;
+                                                    <div class="meta-item status ${statusClass}">
+                                                        <i class="fas fa-circle"></i>
+                                                        ${response.status} ${response.statusText}
+                                                    </div>
+                                                    <div class="meta-item">
+                                                        <i class="fas fa-clock"></i>
+                                                        ${duration}ms
+                                                    </div>
+                                                    <div class="meta-item">
+                                                        <i class="fas fa-weight-hanging"></i>
+                                                        ${formatBytes(responseText.length)}
+                                                    </div>
+                                                `;
 
                 // Add response headers
                 const headerItems = [];
@@ -1464,11 +1464,11 @@
             } catch (error) {
                 elements.response.value = `Error: ${error.message}\n\nPossible causes:\n- CORS issue\n- Network error\n- Invalid URL\n- Server not responding`;
                 elements.responseMeta.innerHTML = `
-                                                <div class="meta-item status error">
-                                                    <i class="fas fa-exclamation-circle"></i>
-                                                    Network Error
-                                                </div>
-                                            `;
+                                                    <div class="meta-item status error">
+                                                        <i class="fas fa-exclamation-circle"></i>
+                                                        Network Error
+                                                    </div>
+                                                `;
                 showToast('Request failed: ' + error.message, 'error');
             } finally {
                 resetSendButton(sendBtn, originalHtml);
@@ -1592,9 +1592,9 @@
             elements.toast.textContent = message;
             elements.toast.className = `toast ${type}`;
             elements.toast.innerHTML = `
-                                            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                                            ${message}
-                                        `;
+                                                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                                                ${message}
+                                            `;
             elements.toast.classList.add('show');
 
             setTimeout(() => {
