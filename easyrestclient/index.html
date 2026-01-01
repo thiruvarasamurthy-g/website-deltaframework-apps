@@ -1,3 +1,8 @@
+<!--
+    Copyright (c) EasyRestClient
+    Author: Thiruvarasamurthy G, IT Architect and Core Developer
+    https://www.thirufactory.com
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +11,14 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-LB0749DEER"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-LB0749DEER');
+    </script>
     <style>
         :root {
             --primary: #4f46e5;
@@ -1202,6 +1215,11 @@
                         </div>
 
                         <div class="status-code-item code-4xx-item">
+                            <strong>403 Forbidden</strong>
+                            <span>The request refuses to authorize and requires permissions.</span>
+                        </div>
+
+                        <div class="status-code-item code-4xx-item">
                             <strong>404 Not Found</strong>
                             <span>The server has not found anything matching the Request-URI.</span>
                         </div>
@@ -1320,12 +1338,12 @@
             const headerRow = document.createElement('div');
             headerRow.className = 'header-row';
             headerRow.innerHTML = `
-                                                <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
-                                                <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
-                                                <button class="header-remove" onclick="this.parentElement.remove()">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            `;
+                                                                                                <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
+                                                                                                <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
+                                                                                                <button class="header-remove" onclick="this.parentElement.remove()">
+                                                                                                    <i class="fas fa-times"></i>
+                                                                                                </button>
+                                                                                            `;
             elements.headersContainer.appendChild(headerRow);
         }
 
@@ -1430,19 +1448,19 @@
                 // Update metadata
                 const statusClass = response.ok ? 'success' : 'error';
                 elements.responseMeta.innerHTML = `
-                                                    <div class="meta-item status ${statusClass}">
-                                                        <i class="fas fa-circle"></i>
-                                                        ${response.status} ${response.statusText}
-                                                    </div>
-                                                    <div class="meta-item">
-                                                        <i class="fas fa-clock"></i>
-                                                        ${duration}ms
-                                                    </div>
-                                                    <div class="meta-item">
-                                                        <i class="fas fa-weight-hanging"></i>
-                                                        ${formatBytes(responseText.length)}
-                                                    </div>
-                                                `;
+                                                                                                    <div class="meta-item status ${statusClass}">
+                                                                                                        <i class="fas fa-circle"></i>
+                                                                                                        ${response.status} ${response.statusText}
+                                                                                                    </div>
+                                                                                                    <div class="meta-item">
+                                                                                                        <i class="fas fa-clock"></i>
+                                                                                                        ${duration}ms
+                                                                                                    </div>
+                                                                                                    <div class="meta-item">
+                                                                                                        <i class="fas fa-weight-hanging"></i>
+                                                                                                        ${formatBytes(responseText.length)}
+                                                                                                    </div>
+                                                                                                `;
 
                 // Add response headers
                 const headerItems = [];
@@ -1459,11 +1477,11 @@
             } catch (error) {
                 elements.response.value = `Error: ${error.message}\n\nPossible causes:\n- CORS issue\n- Network error\n- Invalid URL\n- Server not responding`;
                 elements.responseMeta.innerHTML = `
-                                                    <div class="meta-item status error">
-                                                        <i class="fas fa-exclamation-circle"></i>
-                                                        Network Error
-                                                    </div>
-                                                `;
+                                                                                                    <div class="meta-item status error">
+                                                                                                        <i class="fas fa-exclamation-circle"></i>
+                                                                                                        Network Error
+                                                                                                    </div>
+                                                                                                `;
                 showToast('Request failed: ' + error.message, 'error');
             } finally {
                 resetSendButton(sendBtn, originalHtml);
@@ -1587,9 +1605,9 @@
             elements.toast.textContent = message;
             elements.toast.className = `toast ${type}`;
             elements.toast.innerHTML = `
-                                                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                                                ${message}
-                                            `;
+                                                                                                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                                                                                                ${message}
+                                                                                            `;
             elements.toast.classList.add('show');
 
             setTimeout(() => {
