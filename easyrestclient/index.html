@@ -11,14 +11,22 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-LB0749DEER"></script>
+    <link rel="stylesheet" href="consent.css">
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
 
+        gtag('consent', 'default', {
+            'analytics_storage': 'denied',
+            'ad_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied'
+        });
+
+        gtag('js', new Date());
         gtag('config', 'G-LB0749DEER');
     </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-LB0749DEER"></script>
     <style>
         :root {
             --primary: #4f46e5;
@@ -86,13 +94,27 @@
             transition: var(--transition);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            transform: none !important;
+            position: static !important;
         }
 
         body {
-            padding: 20px;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+        }
+
+        /* Zoomable content container */
+        #zoomable-content {
+            position: relative;
+            transition: transform 0.3s ease;
+            transform-origin: top left;
+            width: 100%;
+            min-height: 100vh;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .container {
@@ -103,6 +125,14 @@
             display: flex;
             flex-direction: column;
             gap: 24px;
+        }
+
+        /* When zoomed, make sure content doesn't overflow horizontally */
+        @media (min-width: 1200px) {
+            #zoomable-content {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
         }
 
         /* Header */
@@ -880,29 +910,30 @@
             display: none;
         }
 
-        /* Toast */
+        /* Toast - Fixed position not affected by zoom */
         .toast {
-            position: fixed;
-            bottom: 28px;
-            right: 28px;
+            position: fixed !important;
+            bottom: 28px !important;
+            right: 28px !important;
             padding: 14px 22px;
             background: var(--success);
             color: white;
             border-radius: var(--radius);
             box-shadow: var(--shadow-lg);
-            z-index: 1000;
+            z-index: 10001 !important;
             display: flex;
             align-items: center;
             gap: 12px;
-            transform: translateY(100px);
+            transform: translateY(100px) !important;
             opacity: 0;
             transition: transform 0.3s ease, opacity 0.3s ease;
             font-weight: 600;
             font-size: 15px;
+            pointer-events: auto;
         }
 
             .toast.show {
-                transform: translateY(0);
+                transform: translateY(0) !important;
                 opacity: 1;
             }
 
@@ -933,7 +964,7 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            body {
+            #zoomable-content {
                 padding: 12px;
             }
 
@@ -965,6 +996,14 @@
             .status-codes-grid {
                 grid-template-columns: 1fr;
             }
+
+            /* Toast responsive */
+            .toast {
+                bottom: 20px !important;
+                right: 20px !important;
+                left: 20px !important;
+                width: auto !important;
+            }
         }
 
         /* Scrollbar */
@@ -989,273 +1028,329 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo">
-                <img src="RestClient.png" alt="REST Client Logo">
-                <div class="logo-text">
-                    <h1>Easy REST Client</h1>
-                    <p>Powered by DeltaFramework</p>
-                </div>
-            </div>
-
-            <div class="controls">
-                <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">
-                        <i class="fas fa-search-minus"></i>
-                    </button>
-                    <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="5">
-                    <button class="zoom-btn" id="zoomInBtn" title="Zoom In">
-                        <i class="fas fa-search-plus"></i>
-                    </button>
-                    <span class="zoom-label" id="zoomLabel">100%</span>
-                </div>
-
-                <div class="theme-toggle">
-                    <span class="theme-toggle-label">Dark</span>
-                    <label class="switch">
-                        <input type="checkbox" id="themeToggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-        </header>
-
-        <!-- Main Content Grid -->
-        <main class="grid">
-            <!-- Request Collections Card (formerly Saved Requests) -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-icon">
-                            <i class="fas fa-history"></i>
-                        </div>
-                        <h2>Request Collections</h2>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn btn-sm btn-info" onclick="exportRequests()">
-                            <i class="fas fa-upload"></i> Export
-                        </button>
-                        <button class="btn btn-sm btn-warning" onclick="importRequests()">
-                            <i class="fas fa-download"></i> Import
-                        </button>
+    <!-- Zoomable content container -->
+    <div id="zoomable-content">
+        <div class="container">
+            <!-- Header -->
+            <header class="header">
+                <div class="logo">
+                    <img src="RestClient.png" alt="REST Client Logo">
+                    <div class="logo-text">
+                        <h1>Easy REST Client</h1>
+                        <p>Powered by DeltaFramework</p>
                     </div>
                 </div>
 
-                <div class="card-body">
-                    <div class="saved-requests-container">
-                        <!-- FIXED: Added onchange attribute to load selected request -->
-                        <select class="form-control saved-select" id="savedRequests" onchange="loadSelectedRequest()">
-                            <option value="">Select from request collections...</option>
-                        </select>
-
-                        <button class="btn btn-success" id="copySavedBtn" onclick="copySavedRequest()">
-                            <i class="fas fa-copy"></i> Copy
+                <div class="controls">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">
+                            <i class="fas fa-search-minus"></i>
                         </button>
-
-                        <button class="btn btn-danger" onclick="deleteSelectedRequest()">
-                            <i class="fas fa-trash"></i> Delete
+                        <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="5">
+                        <button class="zoom-btn" id="zoomInBtn" title="Zoom In">
+                            <i class="fas fa-search-plus"></i>
                         </button>
+                        <span class="zoom-label" id="zoomLabel">100%</span>
+                    </div>
+
+                    <div class="theme-toggle">
+                        <span class="theme-toggle-label">Dark</span>
+                        <label class="switch">
+                            <input type="checkbox" id="themeToggle">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
-            </div>
+            </header>
 
-            <!-- Request and Response Cards -->
-            <div class="grid-main">
-                <!-- Request Panel -->
+            <!-- Main Content Grid -->
+            <main class="grid">
+                <!-- Request Collections Card (formerly Saved Requests) -->
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
                             <div class="card-icon">
-                                <i class="fas fa-paper-plane"></i>
+                                <i class="fas fa-history"></i>
                             </div>
-                            <h2>Request</h2>
+                            <h2>Request Collections</h2>
                         </div>
                         <div class="card-actions">
-                            <button class="btn btn-sm btn-primary" onclick="sendRequest()">
-                                <i class="fas fa-play"></i> Send
+                            <button class="btn btn-sm btn-info" onclick="exportRequests()">
+                                <i class="fas fa-upload"></i> Export
                             </button>
-                            <button class="btn btn-sm btn-success" onclick="saveRequest()">
-                                <i class="fas fa-save"></i> Save
+                            <button class="btn btn-sm btn-warning" onclick="importRequests()">
+                                <i class="fas fa-download"></i> Import
                             </button>
                         </div>
                     </div>
 
                     <div class="card-body">
-                        <!-- HTTP Method Dropdown -->
-                        <div class="form-group method-dropdown">
-                            <label class="form-label">HTTP Method</label>
-                            <select id="httpMethod">
-                                <option value="GET">GET</option>
-                                <option value="POST">POST</option>
-                                <option value="PUT">PUT</option>
-                                <option value="PATCH">PATCH</option>
-                                <option value="DELETE">DELETE</option>
-                                <option value="OPTIONS">OPTIONS</option>
-                                <option value="HEAD">HEAD</option>
+                        <div class="saved-requests-container">
+                            <!-- FIXED: Added onchange attribute to load selected request -->
+                            <select class="form-control saved-select" id="savedRequests" onchange="loadSelectedRequest()">
+                                <option value="">Select from request collections...</option>
                             </select>
-                        </div>
 
-                        <!-- URL Textarea -->
-                        <div class="form-group url-textarea">
-                            <label class="form-label">Endpoint URL</label>
-                            <textarea class="form-control" id="apiUrl" rows="3"
-                                      placeholder="https://api.example.com/endpoint"></textarea>
-                        </div>
-
-                        <!-- Payload with Copy and Paste buttons -->
-                        <div class="form-group">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="form-label">Request Body (JSON)</label>
-                                <div class="payload-actions">
-                                    <button class="btn btn-sm btn-secondary" onclick="pastePayload()">
-                                        <i class="fas fa-paste"></i> Paste
-                                    </button>
-                                    <button class="btn btn-sm btn-secondary" onclick="copyPayload()">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                            </div>
-                            <textarea class="form-control" id="payload" rows="8" placeholder='{"key": "value"}'></textarea>
-                        </div>
-
-                        <!-- Headers -->
-                        <div class="form-group">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="form-label">Headers</label>
-                                <button class="btn btn-sm btn-secondary" onclick="addHeader()">
-                                    <i class="fas fa-plus"></i> Add Header
-                                </button>
-                            </div>
-                            <div class="headers-container" id="headersContainer">
-                                <!-- Headers will be added here dynamically -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Response Panel -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <div class="card-icon">
-                                <i class="fas fa-reply"></i>
-                            </div>
-                            <h2>Response</h2>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn btn-sm btn-secondary" id="copyResponseBtn" onclick="copyResponse()">
+                            <button class="btn btn-success" id="copySavedBtn" onclick="copySavedRequest()">
                                 <i class="fas fa-copy"></i> Copy
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="clearResponse()">
-                                <i class="fas fa-trash"></i> Clear
+
+                            <button class="btn btn-danger" onclick="deleteSelectedRequest()">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    <div class="card-body">
-                        <div class="response-container">
-                            <div class="response-meta" id="responseMeta">
-                                <!-- Response metadata will be added here -->
+                <!-- Request and Response Cards -->
+                <div class="grid-main">
+                    <!-- Request Panel -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <div class="card-icon">
+                                    <i class="fas fa-paper-plane"></i>
+                                </div>
+                                <h2>Request</h2>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-sm btn-primary" onclick="sendRequest()">
+                                    <i class="fas fa-play"></i> Send
+                                </button>
+                                <button class="btn btn-sm btn-success" onclick="saveRequest()">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <!-- HTTP Method Dropdown -->
+                            <div class="form-group method-dropdown">
+                                <label class="form-label">HTTP Method</label>
+                                <select id="httpMethod">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="PATCH">PATCH</option>
+                                    <option value="DELETE">DELETE</option>
+                                    <option value="OPTIONS">OPTIONS</option>
+                                    <option value="HEAD">HEAD</option>
+                                </select>
                             </div>
 
-                            <div class="response-body">
-                                <!-- Changed: Textarea for response output -->
-                                <textarea readonly class="response-textarea" id="response"></textarea>
-                                <div class="response-empty" id="responseEmpty">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>Send a request to see the response here</p>
+                            <!-- URL Textarea -->
+                            <div class="form-group url-textarea">
+                                <label class="form-label">Endpoint URL</label>
+                                <textarea class="form-control" id="apiUrl" rows="3"
+                                          placeholder="https://api.example.com/endpoint"></textarea>
+                            </div>
+
+                            <!-- Payload with Copy and Paste buttons -->
+                            <div class="form-group">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="form-label">Request Body (JSON)</label>
+                                    <div class="payload-actions">
+                                        <button class="btn btn-sm btn-secondary" onclick="pastePayload()">
+                                            <i class="fas fa-paste"></i> Paste
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" onclick="copyPayload()">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea class="form-control" id="payload" rows="8" placeholder='{"key": "value"}'></textarea>
+                            </div>
+
+                            <!-- Headers -->
+                            <div class="form-group">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="form-label">Headers</label>
+                                    <button class="btn btn-sm btn-secondary" onclick="addHeader()">
+                                        <i class="fas fa-plus"></i> Add Header
+                                    </button>
+                                </div>
+                                <div class="headers-container" id="headersContainer">
+                                    <!-- Headers will be added here dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Response Panel -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <div class="card-icon">
+                                    <i class="fas fa-reply"></i>
+                                </div>
+                                <h2>Response</h2>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-sm btn-secondary" id="copyResponseBtn" onclick="copyResponse()">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="clearResponse()">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="response-container">
+                                <div class="response-meta" id="responseMeta">
+                                    <!-- Response metadata will be added here -->
+                                </div>
+
+                                <div class="response-body">
+                                    <!-- Changed: Textarea for response output -->
+                                    <textarea readonly class="response-textarea" id="response"></textarea>
+                                    <div class="response-empty" id="responseEmpty">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>Send a request to see the response here</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- HTTP Status Codes Guide Card -->
-            <div class="card">
-                <div class="status-codes-guide">
-                    <h2 class="panel-title"><i class="fas fa-list-alt"></i> HTTP Status Codes Guide</h2>
-                    <p>Common HTTP response status codes and their meanings:</p>
+                <!-- HTTP Status Codes Guide Card -->
+                <div class="card">
+                    <div class="status-codes-guide">
+                        <h2 class="panel-title"><i class="fas fa-list-alt"></i> HTTP Status Codes Guide</h2>
+                        <p>Common HTTP response status codes and their meanings:</p>
 
-                    <div class="status-codes-grid">
-                        <!-- 1xx Informational -->
-                        <div class="status-code-item code-1xx-item">
-                            <strong>100 Continue</strong>
-                            <span>The server has received the request headers and the client should proceed to send the request body.</span>
-                        </div>
+                        <div class="status-codes-grid">
+                            <!-- 1xx Informational -->
+                            <div class="status-code-item code-1xx-item">
+                                <strong>100 Continue</strong>
+                                <span>The server has received the request headers and the client should proceed to send the request body.</span>
+                            </div>
 
-                        <!-- 2xx Success -->
-                        <div class="status-code-item code-2xx-item">
-                            <strong>200 OK</strong>
-                            <span>The request has succeeded. The information returned depends on the method used.</span>
-                        </div>
+                            <!-- 2xx Success -->
+                            <div class="status-code-item code-2xx-item">
+                                <strong>200 OK</strong>
+                                <span>The request has succeeded. The information returned depends on the method used.</span>
+                            </div>
 
-                        <div class="status-code-item code-2xx-item">
-                            <strong>201 Created</strong>
-                            <span>The request has been fulfilled and resulted in a new resource being created.</span>
-                        </div>
+                            <div class="status-code-item code-2xx-item">
+                                <strong>201 Created</strong>
+                                <span>The request has been fulfilled and resulted in a new resource being created.</span>
+                            </div>
 
-                        <!-- 3xx Redirection -->
-                        <div class="status-code-item code-3xx-item">
-                            <strong>301 Moved Permanently</strong>
-                            <span>The resource has been assigned a new permanent URI and any future references should use one of the returned URIs.</span>
-                        </div>
+                            <!-- 3xx Redirection -->
+                            <div class="status-code-item code-3xx-item">
+                                <strong>301 Moved Permanently</strong>
+                                <span>The resource has been assigned a new permanent URI and any future references should use one of the returned URIs.</span>
+                            </div>
 
-                        <!-- 4xx Client Errors -->
-                        <div class="status-code-item code-4xx-item">
-                            <strong>400 Bad Request</strong>
-                            <span>The request could not be understood by the server due to malformed syntax.</span>
-                        </div>
+                            <!-- 4xx Client Errors -->
+                            <div class="status-code-item code-4xx-item">
+                                <strong>400 Bad Request</strong>
+                                <span>The request could not be understood by the server due to malformed syntax.</span>
+                            </div>
 
-                        <div class="status-code-item code-4xx-item">
-                            <strong>401 Unauthorized</strong>
-                            <span>The request requires user authentication.</span>
-                        </div>
+                            <div class="status-code-item code-4xx-item">
+                                <strong>401 Unauthorized</strong>
+                                <span>The request requires user authentication.</span>
+                            </div>
 
-                        <div class="status-code-item code-4xx-item">
-                            <strong>403 Forbidden</strong>
-                            <span>The request refuses to authorize and requires permissions.</span>
-                        </div>
+                            <div class="status-code-item code-4xx-item">
+                                <strong>403 Forbidden</strong>
+                                <span>The request refuses to authorize and requires permissions.</span>
+                            </div>
 
-                        <div class="status-code-item code-4xx-item">
-                            <strong>404 Not Found</strong>
-                            <span>The server has not found anything matching the Request-URI.</span>
-                        </div>
+                            <div class="status-code-item code-4xx-item">
+                                <strong>404 Not Found</strong>
+                                <span>The server has not found anything matching the Request-URI.</span>
+                            </div>
 
-                        <!-- 5xx Server Errors -->
-                        <div class="status-code-item code-5xx-item">
-                            <strong>500 Internal Server Error</strong>
-                            <span>The server encountered an unexpected condition which prevented it from fulfilling the request.</span>
-                        </div>
+                            <div class="status-code-item code-4xx-item">
+                                <strong>405 Method Not Allowed</strong>
+                                <span>The method specified in the request (e.g., POST or DELETE) is not allowed for the resource identified by the URI.</span>
+                            </div>
 
-                        <div class="status-code-item code-5xx-item">
-                            <strong>503 Service Unavailable</strong>
-                            <span>The server is currently unable to handle the request due to temporary overload or maintenance.</span>
+                            <div class="status-code-item code-4xx-item">
+                                <strong>408 Request Timeout</strong>
+                                <span>The server timed out waiting for the client to send the complete request.</span>
+                            </div>
+
+                            <div class="status-code-item code-4xx-item">
+                                <strong>409 Conflict</strong>
+                                <span>The request could not be completed due to a conflict with the current state of the resource.</span>
+                            </div>
+
+                            <div class="status-code-item code-4xx-item">
+                                <strong>410 Gone</strong>
+                                <span>The requested resource is no longer available and will not be available again and indicates permanent removal.</span>
+                            </div>
+
+                            <div class="status-code-item code-4xx-item">
+                                <strong>413 Payload Too Large</strong>
+                                <span>The server cannot process the request because the requested entity is too large.</span>
+                            </div>
+
+                            <div class="status-code-item code-4xx-item">
+                                <strong>429 Too Many Requests</strong>
+                                <span>The user has sent too many requests in a given amount of time</span>
+                            </div>
+
+                            <!-- 5xx Server Errors -->
+                            <div class="status-code-item code-5xx-item">
+                                <strong>500 Internal Server Error</strong>
+                                <span>The server encountered an unexpected condition which prevented it from fulfilling the request.</span>
+                            </div>
+
+                            <div class="status-code-item code-5xx-item">
+                                <strong>501 Not Implemented</strong>
+                                <span>The server does not support the functionality required to fulfill the request.</span>
+                            </div>
+
+                            <div class="status-code-item code-5xx-item">
+                                <strong>502 Bad Gateway</strong>
+                                <span>The server, while acting as a gateway or proxy, received an invalid response from an upstream server.</span>
+                            </div>
+
+                            <div class="status-code-item code-5xx-item">
+                                <strong>503 Service Unavailable</strong>
+                                <span>The server is currently unable to handle the request due to temporary overload or maintenance.</span>
+                            </div>
+
+                            <div class="status-code-item code-5xx-item">
+                                <strong>504 Gateway Timeout</strong>
+                                <span>The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server.</span>
+                            </div>
+
+                            <div class="status-code-item code-5xx-item">
+                                <strong>505 HTTP Version Not Supported</strong>
+                                <span>The server does not support the HTTP protocol version used in the request.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <div class="footer-brand">
-                    Easy Rest Client
-                </div>
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="footer-content">
+                    <div class="footer-brand">
+                        Easy Rest Client
+                    </div>
 
-                <div class="footer-copyright">
-                    <span id="copyrightMessage">Copyright © Easy Rest Client v1.0.0 2026 - </span>  •
-                    Author: <a href="https://www.thirufactory.com" target="_blank" class="footer-link">Thiruvarasamurthy G</a> •
-                    Powered by <a href="https://www.deltaframework.net/" target="_blank" class="footer-link">DeltaFramework</a>
+                    <div class="footer-copyright">
+                        <span id="copyrightMessage">Copyright © Easy Rest Client v1.0.0 2026 - </span>  •
+                        Author: <a href="https://www.thirufactory.com" target="_blank" class="footer-link">Thiruvarasamurthy G</a> •
+                        Powered by <a href="https://www.deltaframework.net/" target="_blank" class="footer-link">DeltaFramework</a>
+                    </div>
+                    <span id="reset-consent-link" class="reset-consent" style="cursor: pointer;">
+                        Change Cookie Preferences
+                    </span>
                 </div>
-            </div>
-        </footer>
+            </footer>
+        </div>
     </div>
 
-    <!-- Toast Notification -->
+    <!-- Toast Notification - Fixed at root level -->
     <div class="toast" id="toast"></div>
 
     <script>
@@ -1280,8 +1375,10 @@
 
         // ========== Zoom Functionality ==========
         function setZoom(percent, persist = true) {
-            document.body.style.transform = `scale(${percent / 100})`;
-            document.body.style.transformOrigin = 'top left';
+            const zoomableContent = document.getElementById('zoomable-content');
+            if (zoomableContent) {
+                zoomableContent.style.transform = `scale(${percent / 100})`;
+            }
             elements.zoomSlider.value = percent;
             elements.zoomLabel.textContent = `${percent}%`;
             if (persist) localStorage.setItem('restClientZoom', percent);
@@ -1294,8 +1391,10 @@
         }
 
         // Initialize zoom
-        const savedZoom = parseInt(localStorage.getItem('restClientZoom') || '100', 10);
-        setZoom(isNaN(savedZoom) ? 100 : savedZoom, false);
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedZoom = parseInt(localStorage.getItem('restClientZoom') || '100', 10);
+            setZoom(isNaN(savedZoom) ? 100 : savedZoom, false);
+        });
 
         elements.zoomSlider.addEventListener('input', () => setZoom(parseInt(elements.zoomSlider.value, 10)));
         elements.zoomInBtn.addEventListener('click', () => changeZoomBy(5));
@@ -1338,12 +1437,12 @@
             const headerRow = document.createElement('div');
             headerRow.className = 'header-row';
             headerRow.innerHTML = `
-                                                                                                <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
-                                                                                                <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
-                                                                                                <button class="header-remove" onclick="this.parentElement.remove()">
-                                                                                                    <i class="fas fa-times"></i>
-                                                                                                </button>
-                                                                                            `;
+                                                            <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
+                                                            <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
+                                                            <button class="header-remove" onclick="this.parentElement.remove()">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        `;
             elements.headersContainer.appendChild(headerRow);
         }
 
@@ -1448,19 +1547,19 @@
                 // Update metadata
                 const statusClass = response.ok ? 'success' : 'error';
                 elements.responseMeta.innerHTML = `
-                                                                                                    <div class="meta-item status ${statusClass}">
-                                                                                                        <i class="fas fa-circle"></i>
-                                                                                                        ${response.status} ${response.statusText}
-                                                                                                    </div>
-                                                                                                    <div class="meta-item">
-                                                                                                        <i class="fas fa-clock"></i>
-                                                                                                        ${duration}ms
-                                                                                                    </div>
-                                                                                                    <div class="meta-item">
-                                                                                                        <i class="fas fa-weight-hanging"></i>
-                                                                                                        ${formatBytes(responseText.length)}
-                                                                                                    </div>
-                                                                                                `;
+                                                                <div class="meta-item status ${statusClass}">
+                                                                    <i class="fas fa-circle"></i>
+                                                                    ${response.status} ${response.statusText}
+                                                                </div>
+                                                                <div class="meta-item">
+                                                                    <i class="fas fa-clock"></i>
+                                                                    ${duration}ms
+                                                                </div>
+                                                                <div class="meta-item">
+                                                                    <i class="fas fa-weight-hanging"></i>
+                                                                    ${formatBytes(responseText.length)}
+                                                                </div>
+                                                            `;
 
                 // Add response headers
                 const headerItems = [];
@@ -1477,11 +1576,11 @@
             } catch (error) {
                 elements.response.value = `Error: ${error.message}\n\nPossible causes:\n- CORS issue\n- Network error\n- Invalid URL\n- Server not responding`;
                 elements.responseMeta.innerHTML = `
-                                                                                                    <div class="meta-item status error">
-                                                                                                        <i class="fas fa-exclamation-circle"></i>
-                                                                                                        Network Error
-                                                                                                    </div>
-                                                                                                `;
+                                                                <div class="meta-item status error">
+                                                                    <i class="fas fa-exclamation-circle"></i>
+                                                                    Network Error
+                                                                </div>
+                                                            `;
                 showToast('Request failed: ' + error.message, 'error');
             } finally {
                 resetSendButton(sendBtn, originalHtml);
@@ -1605,9 +1704,9 @@
             elements.toast.textContent = message;
             elements.toast.className = `toast ${type}`;
             elements.toast.innerHTML = `
-                                                                                                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                                                                                                ${message}
-                                                                                            `;
+                                                            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                                                            ${message}
+                                                        `;
             elements.toast.classList.add('show');
 
             setTimeout(() => {
@@ -1797,8 +1896,6 @@
         // ========== Initialize ==========
         function init() {
             // Set current year
-            //document.getElementById('currentYear').textContent = new Date().getFullYear();
-
             const copyrightMessage = document.getElementById('copyrightMessage');
             const now = new Date();
             const currentYear = now.getFullYear();
@@ -1814,5 +1911,6 @@
         // Start the application
         document.addEventListener('DOMContentLoaded', init);
     </script>
+    <script src="consent.js"></script>
 </body>
 </html>
