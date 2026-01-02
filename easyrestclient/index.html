@@ -86,6 +86,14 @@
             box-sizing: border-box;
         }
 
+        [data-theme="dark"] .btn-send {
+            background: #1d4ed8;
+        }
+
+            [data-theme="dark"] .btn-send:hover {
+                background: #1e40af;
+            }
+
         html, body {
             height: 100%;
             font-family: var(--font-sans);
@@ -448,6 +456,19 @@
             border-radius: var(--radius);
         }
 
+        .btn-send {
+            background: #3b82f6;
+            color: white;
+        }
+
+            .btn-send:hover {
+                background: #2563eb;
+            }
+
+            .btn-send:active {
+                background: #1d4ed8;
+            }
+
         /* Form Elements */
         .form-group {
             margin-bottom: 24px;
@@ -700,6 +721,20 @@
             align-items: center;
             flex-wrap: wrap;
         }
+
+            .saved-requests-container .btn {
+                flex: 0 0 auto;
+                width: 85px; /* Reduced from 100px */
+                justify-content: center;
+                padding: 10px 8px; /* Reduced padding for smaller buttons */
+                font-size: 13px; /* Slightly smaller font */
+            }
+
+            /* Keep the dropdown flexible */
+            .saved-requests-container .saved-select {
+                flex: 1;
+                min-width: 200px; /* Slightly reduced */
+            }
 
         .saved-select {
             flex: 1;
@@ -968,6 +1003,24 @@
                 padding: 12px;
             }
 
+            .saved-requests-container .btn,
+            .saved-requests-container .saved-select {
+                flex: 1 1 100%;
+                min-width: 100%;
+                width: 100%;
+            }
+
+            .saved-requests-container .btn {
+                margin-top: 8px;
+                width: 100%; /* Full width on mobile */
+                padding: 12px 16px; /* Normal padding on mobile */
+                font-size: 14px; /* Normal font on mobile */
+            }
+
+            .saved-requests-container .btn {
+                margin-top: 8px;
+            }
+
             .header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -1065,39 +1118,60 @@
 
             <!-- Main Content Grid -->
             <main class="grid">
-                <!-- Request Collections Card (formerly Saved Requests) -->
+                <!-- Request Collection Groups Card -->
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
                             <div class="card-icon">
                                 <i class="fas fa-history"></i>
                             </div>
-                            <h2>Request Collections</h2>
+                            <h2>Request Collection</h2>
                         </div>
                         <div class="card-actions">
-                            <button class="btn btn-sm btn-info" onclick="exportRequests()">
+                            <button class="btn btn-sm btn-info" onclick="exportRequestCollections()">
                                 <i class="fas fa-upload"></i> Export
                             </button>
-                            <button class="btn btn-sm btn-warning" onclick="importRequests()">
+                            <button class="btn btn-sm btn-warning" onclick="importRequestCollections()">
                                 <i class="fas fa-download"></i> Import
                             </button>
                         </div>
                     </div>
 
                     <div class="card-body">
-                        <div class="saved-requests-container">
-                            <!-- FIXED: Added onchange attribute to load selected request -->
-                            <select class="form-control saved-select" id="savedRequests" onchange="loadSelectedRequest()">
-                                <option value="">Select from request collections...</option>
-                            </select>
+                        <!-- Request Collection Controls -->
+                        <div class="form-group mb-4">
+                            <label class="form-label">Groups</label>
+                            <div class="saved-requests-container">
+                                <select class="form-control saved-select" id="requestCollectionGroups">
+                                    <option value="">Select a group...</option>
+                                </select>
 
-                            <button class="btn btn-success" id="copySavedBtn" onclick="copySavedRequest()">
-                                <i class="fas fa-copy"></i> Copy
-                            </button>
+                                <button class="btn btn-primary btn-sm" id="addRequestCollectionGroupBtn" onclick="addRequestCollectionGroup()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
 
-                            <button class="btn btn-danger" onclick="deleteSelectedRequest()">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                                <button class="btn btn-danger btn-sm" id="deleteRequestCollectionGroupBtn" onclick="deleteRequestCollectionGroup()" disabled>
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Request Collection Requests Dropdown -->
+                        <div class="form-group">
+                            <label class="form-label">Requests</label>
+                            <div class="saved-requests-container">
+                                <select class="form-control saved-select" id="requestCollectionRequests" onchange="loadSelectedRequestCollectionRequest()" disabled>
+                                    <option value="">Select a request...</option>
+                                </select>
+
+                                <button class="btn btn-success" id="copyRequestCollectionRequestBtn" onclick="copyRequestCollectionRequest()" disabled>
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+
+                                <button class="btn btn-danger" onclick="deleteSelectedRequestCollectionRequest()" disabled>
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1114,10 +1188,10 @@
                                 <h2>Request</h2>
                             </div>
                             <div class="card-actions">
-                                <button class="btn btn-sm btn-primary" onclick="sendRequest()">
+                                <button class="btn btn-sm btn-send" onclick="sendRequest()">
                                     <i class="fas fa-play"></i> Send
                                 </button>
-                                <button class="btn btn-sm btn-success" onclick="saveRequest()">
+                                <button class="btn btn-sm btn-success" onclick="saveRequestCollectionRequest()">
                                     <i class="fas fa-save"></i> Save
                                 </button>
                             </div>
@@ -1338,7 +1412,7 @@
                     </div>
 
                     <div class="footer-copyright">
-                        <span id="copyrightMessage">Copyright © Easy Rest Client v1.0.0 2026 - </span>  •
+                        <span id="copyrightMessage">Copyright © Easy Rest Client v2.0.0 2026 - </span>  •
                         Author: <a href="https://www.thirufactory.com" target="_blank" class="footer-link">Thiruvarasamurthy G</a> •
                         Powered by <a href="https://www.deltaframework.net/" target="_blank" class="footer-link">DeltaFramework</a>
                     </div>
@@ -1368,8 +1442,6 @@
             response: document.getElementById('response'),
             responseMeta: document.getElementById('responseMeta'),
             responseEmpty: document.getElementById('responseEmpty'),
-            savedRequests: document.getElementById('savedRequests'),
-            copySavedBtn: document.getElementById('copySavedBtn'),
             toast: document.getElementById('toast')
         };
 
@@ -1437,12 +1509,12 @@
             const headerRow = document.createElement('div');
             headerRow.className = 'header-row';
             headerRow.innerHTML = `
-                                                            <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
-                                                            <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
-                                                            <button class="header-remove" onclick="this.parentElement.remove()">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        `;
+                                                                                                            <input type="text" class="form-control header-input" placeholder="Header Name" value="${key}">
+                                                                                                            <input type="text" class="form-control header-input" placeholder="Header Value" value="${value}">
+                                                                                                            <button class="header-remove" onclick="this.parentElement.remove()">
+                                                                                                                <i class="fas fa-times"></i>
+                                                                                                            </button>
+                                                                                                        `;
             elements.headersContainer.appendChild(headerRow);
         }
 
@@ -1469,7 +1541,7 @@
             const payload = elements.payload.value;
 
             // Show loading state
-            const sendBtn = document.querySelector('.btn-primary');
+            const sendBtn = document.querySelector('.btn[onclick="sendRequest()"]');
             const originalHtml = sendBtn.innerHTML;
             sendBtn.innerHTML = '<div class="loading"></div> Sending...';
             sendBtn.disabled = true;
@@ -1511,34 +1583,73 @@
                 // Parse response text
                 let responseText = await response.text();
 
-                // Try to format the response for better display
-                let formattedResponse = responseText;
+                // First, try to parse as JSON (the outer JSON string)
+                let formattedResponse;
 
-                // Try to parse as JSON first
                 try {
-                    const json = JSON.parse(responseText);
-                    formattedResponse = JSON.stringify(json, null, 2);
-                } catch (e) {
-                    // If not JSON, try to preserve the formatting
-                    // Replace \r\n with actual line breaks
-                    formattedResponse = responseText.replace(/\r\n/g, '\n');
+                    // Parse the outer JSON string
+                    const parsed = JSON.parse(responseText);
 
-                    // For text responses with colon-separated values, format them better
-                    if (formattedResponse.includes(':') && !formattedResponse.includes('{') && !formattedResponse.includes('[')) {
-                        const lines = formattedResponse.split('\n');
-                        const formattedLines = lines.map(line => {
-                            if (line.includes(':')) {
-                                const parts = line.split(':');
-                                if (parts.length >= 2) {
-                                    const key = parts[0].trim();
-                                    const value = parts.slice(1).join(':').trim();
-                                    return `${key.padEnd(15)}: ${value}`;
+                    // If the parsed result is a string (like in our case), handle it
+                    if (typeof parsed === 'string') {
+                        // Now we have the actual string with \r\n escape sequences
+                        // Replace literal backslash-r-backslash-n with newlines
+                        let cleanText = parsed.replace(/\\r\\n/g, '\n');
+                        cleanText = cleanText.replace(/\\n/g, '\n');
+                        cleanText = cleanText.replace(/\\r/g, '\n');
+                        cleanText = cleanText.trim();
+
+                        // Format key-value pairs if present
+                        const lines = cleanText.split('\n').filter(line => line.trim() !== '');
+
+                        if (lines.length > 0 && lines[0].includes(':')) {
+                            // Find the longest key for alignment
+                            let maxKeyLength = 0;
+                            lines.forEach(line => {
+                                if (line.includes(':')) {
+                                    const colonIndex = line.indexOf(':');
+                                    const key = line.substring(0, colonIndex).trim();
+                                    maxKeyLength = Math.max(maxKeyLength, key.length);
                                 }
-                            }
-                            return line;
-                        });
-                        formattedResponse = formattedLines.join('\n');
+                            });
+
+                            // Reformat each line with proper alignment
+                            const formattedLines = lines.map(line => {
+                                if (line.includes(':')) {
+                                    const colonIndex = line.indexOf(':');
+                                    const key = line.substring(0, colonIndex).trim();
+                                    const value = line.substring(colonIndex + 1).trim();
+                                    return `${key.padEnd(maxKeyLength)} : ${value}`;
+                                }
+                                return line;
+                            });
+
+                            formattedResponse = formattedLines.join('\n');
+                        } else {
+                            formattedResponse = cleanText;
+                        }
+                    } else if (typeof parsed === 'object' && parsed !== null) {
+                        // It's a JSON object, pretty print it
+                        formattedResponse = JSON.stringify(parsed, null, 2);
+                    } else {
+                        // Some other type (number, boolean, etc.)
+                        formattedResponse = String(parsed);
                     }
+                } catch (e) {
+                    // Not JSON - try direct replacement
+                    let cleanText = responseText;
+
+                    // Remove surrounding quotes if present
+                    if (cleanText.startsWith('"') && cleanText.endsWith('"')) {
+                        cleanText = cleanText.substring(1, cleanText.length - 1);
+                    }
+
+                    // Replace escape sequences
+                    cleanText = cleanText.replace(/\\r\\n/g, '\n');
+                    cleanText = cleanText.replace(/\\n/g, '\n');
+                    cleanText = cleanText.trim();
+
+                    formattedResponse = cleanText;
                 }
 
                 // Update response display
@@ -1547,19 +1658,19 @@
                 // Update metadata
                 const statusClass = response.ok ? 'success' : 'error';
                 elements.responseMeta.innerHTML = `
-                                                                <div class="meta-item status ${statusClass}">
-                                                                    <i class="fas fa-circle"></i>
-                                                                    ${response.status} ${response.statusText}
-                                                                </div>
-                                                                <div class="meta-item">
-                                                                    <i class="fas fa-clock"></i>
-                                                                    ${duration}ms
-                                                                </div>
-                                                                <div class="meta-item">
-                                                                    <i class="fas fa-weight-hanging"></i>
-                                                                    ${formatBytes(responseText.length)}
-                                                                </div>
-                                                            `;
+                                                                                                                <div class="meta-item status ${statusClass}">
+                                                                                                                    <i class="fas fa-circle"></i>
+                                                                                                                    ${response.status} ${response.statusText}
+                                                                                                                </div>
+                                                                                                                <div class="meta-item">
+                                                                                                                    <i class="fas fa-clock"></i>
+                                                                                                                    ${duration}ms
+                                                                                                                </div>
+                                                                                                                <div class="meta-item">
+                                                                                                                    <i class="fas fa-weight-hanging"></i>
+                                                                                                                    ${formatBytes(responseText.length)}
+                                                                                                                </div>
+                                                                                                            `;
 
                 // Add response headers
                 const headerItems = [];
@@ -1576,37 +1687,15 @@
             } catch (error) {
                 elements.response.value = `Error: ${error.message}\n\nPossible causes:\n- CORS issue\n- Network error\n- Invalid URL\n- Server not responding`;
                 elements.responseMeta.innerHTML = `
-                                                                <div class="meta-item status error">
-                                                                    <i class="fas fa-exclamation-circle"></i>
-                                                                    Network Error
-                                                                </div>
-                                                            `;
+                                                                                                                <div class="meta-item status error">
+                                                                                                                    <i class="fas fa-exclamation-circle"></i>
+                                                                                                                    Network Error
+                                                                                                                </div>
+                                                                                                            `;
                 showToast('Request failed: ' + error.message, 'error');
             } finally {
                 resetSendButton(sendBtn, originalHtml);
             }
-        }
-
-        // Helper function to format text responses with colon-separated values
-        function formatTextResponse(text) {
-            // If it's already formatted with spaces after colons, return as-is
-            if (text.includes(': ') && text.split(': ').length > 2) {
-                return text;
-            }
-
-            // Try to format lines with colons
-            const lines = text.split('\n');
-            const formattedLines = lines.map(line => {
-                if (line.includes(':')) {
-                    const colonIndex = line.indexOf(':');
-                    const key = line.substring(0, colonIndex).trim();
-                    const value = line.substring(colonIndex + 1).trim();
-                    return `${key.padEnd(20)}: ${value}`;
-                }
-                return line;
-            });
-
-            return formattedLines.join('\n');
         }
 
         function resetSendButton(button, originalHtml) {
@@ -1677,36 +1766,14 @@
             showToast('Response copied to clipboard', 'success');
         }
 
-        function copySavedRequest() {
-            const name = elements.savedRequests.value;
-            if (!name) {
-                showToast('Please select a request from collections to copy', 'error');
-                return;
-            }
-
-            const savedRequests = JSON.parse(localStorage.getItem('savedRequests') || '{}');
-            const request = savedRequests[name];
-
-            if (!request) {
-                showToast('Request not found', 'error');
-                return;
-            }
-
-            // Create a formatted string of the saved request
-            const requestText = `Request Collection: ${name}\n\nMethod: ${request.method}\nURL: ${request.url}\n\nHeaders:\n${JSON.stringify(request.headers, null, 2)}\n\nBody:\n${request.payload}`;
-
-            copyToClipboard(requestText);
-            showToast('Request collection copied to clipboard', 'success');
-        }
-
         // ========== Toast Notifications ==========
         function showToast(message, type = 'success') {
             elements.toast.textContent = message;
             elements.toast.className = `toast ${type}`;
             elements.toast.innerHTML = `
-                                                            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                                                            ${message}
-                                                        `;
+                                                                                                            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                                                                                                            ${message}
+                                                                                                        `;
             elements.toast.classList.add('show');
 
             setTimeout(() => {
@@ -1714,8 +1781,157 @@
             }, 3000);
         }
 
-        // ========== Request Collections ==========
-        function saveRequest() {
+        // ========== Request Collection Groups Functions ==========
+        function addRequestCollectionGroup() {
+            const groupName = prompt('Enter a name for the new request collection group:', 'New Group');
+            if (!groupName || !groupName.trim()) return;
+
+            let requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+
+            // Check if group already exists
+            if (requestCollectionGroups[groupName]) {
+                showToast(`Request collection group "${groupName}" already exists`, 'error');
+                return;
+            }
+
+            // Create new empty group
+            requestCollectionGroups[groupName] = {};
+            localStorage.setItem('requestCollectionGroups', JSON.stringify(requestCollectionGroups));
+
+            // Update UI
+            populateRequestCollectionGroups();
+            document.getElementById('requestCollectionGroups').value = groupName;
+            onRequestCollectionGroupSelected();
+
+            showToast(`Request collection group "${groupName}" created`, 'success');
+        }
+
+        function deleteRequestCollectionGroup() {
+            const groupSelect = document.getElementById('requestCollectionGroups');
+            const groupName = groupSelect.value;
+
+            if (!groupName) {
+                showToast('Please select a request collection group to delete', 'error');
+                return;
+            }
+
+            if (groupName === 'Default') {
+                showToast('Cannot delete the Default request collection group', 'error');
+                return;
+            }
+
+            const requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+
+            // Check if group has any requests
+            const requestCount = Object.keys(requestCollectionGroups[groupName] || {}).length;
+
+            let message = `Are you sure you want to delete request collection group "${groupName}"?`;
+            if (requestCount > 0) {
+                message += `\nThis will also delete ${requestCount} request(s) in this group.`;
+            }
+
+            if (!confirm(message)) return;
+
+            // Delete the group
+            delete requestCollectionGroups[groupName];
+            localStorage.setItem('requestCollectionGroups', JSON.stringify(requestCollectionGroups));
+
+            // Switch to Default group
+            populateRequestCollectionGroups();
+            document.getElementById('requestCollectionGroups').value = 'Default';
+            onRequestCollectionGroupSelected();
+
+            showToast(`Request collection group "${groupName}" deleted`, 'success');
+        }
+
+        function populateRequestCollectionGroups() {
+            const requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+            const groupSelect = document.getElementById('requestCollectionGroups');
+            const currentGroup = groupSelect.value;
+
+            groupSelect.innerHTML = '<option value="">Select a group...</option>';
+
+            // Get all groups, ensure "Default" exists
+            const groups = Object.keys(requestCollectionGroups);
+            if (!groups.includes('Default')) {
+                requestCollectionGroups['Default'] = {};
+                localStorage.setItem('requestCollectionGroups', JSON.stringify(requestCollectionGroups));
+            }
+
+            // Add "Default" first, then other groups alphabetically
+            groupSelect.appendChild(createOption('Default', 'Default'));
+
+            groups
+                .filter(group => group !== 'Default')
+                .sort()
+                .forEach(group => {
+                    groupSelect.appendChild(createOption(group, group));
+                });
+
+            // Restore selected group if it still exists
+            if (currentGroup && groups.includes(currentGroup)) {
+                groupSelect.value = currentGroup;
+            } else {
+                groupSelect.value = 'Default';
+            }
+
+            // Save current group selection
+            localStorage.setItem('currentRequestCollectionGroup', groupSelect.value);
+        }
+
+        function createOption(value, text) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = text;
+            return option;
+        }
+
+        function onRequestCollectionGroupSelected() {
+            const groupSelect = document.getElementById('requestCollectionGroups');
+            const groupName = groupSelect.value;
+            const requestCollectionRequestsSelect = document.getElementById('requestCollectionRequests');
+            const deleteGroupBtn = document.getElementById('deleteRequestCollectionGroupBtn');
+            const copyRequestBtn = document.getElementById('copyRequestCollectionRequestBtn');
+            const deleteRequestBtn = document.querySelector('.btn-danger[onclick="deleteSelectedRequestCollectionRequest()"]');
+
+            // Enable/disable group delete button
+            deleteGroupBtn.disabled = !groupName || groupName === 'Default';
+
+            if (!groupName) {
+                // No group selected, disable request controls
+                requestCollectionRequestsSelect.disabled = true;
+                requestCollectionRequestsSelect.innerHTML = '<option value="">Select a request...</option>';
+                copyRequestBtn.disabled = true;
+                if (deleteRequestBtn) deleteRequestBtn.disabled = true;
+                return;
+            }
+
+            // Enable request dropdown and populate it
+            requestCollectionRequestsSelect.disabled = false;
+            populateRequestCollectionRequests(groupName);
+
+            // Save current group selection
+            localStorage.setItem('currentRequestCollectionGroup', groupName);
+        }
+
+        function getCurrentRequestCollectionGroup() {
+            const groupSelect = document.getElementById('requestCollectionGroups');
+            return groupSelect.value || 'Default';
+        }
+
+        function getRequestCollectionGroupRequests(groupName) {
+            const requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+            return requestCollectionGroups[groupName] || {};
+        }
+
+        function setRequestCollectionGroupRequests(groupName, requests) {
+            let requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+            requestCollectionGroups[groupName] = requests;
+            localStorage.setItem('requestCollectionGroups', JSON.stringify(requestCollectionGroups));
+        }
+
+        // ========== Request Collection Requests Functions ==========
+        function saveRequestCollectionRequest() {
             const url = elements.apiUrl.value.trim();
             if (!url) {
                 showToast('Please enter a URL to save', 'error');
@@ -1723,10 +1939,12 @@
             }
 
             const method = elements.httpMethod.value;
+            const currentGroup = getCurrentRequestCollectionGroup();
+
             // Format: "HttpMethod EndpointURL"
             const suggestedName = `${method} ${url}`;
 
-            const name = prompt('Enter a name for this request:', suggestedName);
+            const name = prompt('Enter a name for this request collection request:', suggestedName);
             if (!name) return;
 
             const requestData = {
@@ -1734,54 +1952,76 @@
                 method,
                 payload: elements.payload.value,
                 headers: getHeaders(),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                requestCollectionGroup: currentGroup
             };
 
-            let savedRequests = JSON.parse(localStorage.getItem('savedRequests') || '{}');
-            savedRequests[name] = requestData;
-            localStorage.setItem('savedRequests', JSON.stringify(savedRequests));
+            // Get existing requests for current group
+            const groupRequests = getRequestCollectionGroupRequests(currentGroup);
 
-            populateSavedRequests();
-            showToast('Request saved to collections', 'success');
+            // Check if request with same name already exists in group
+            if (groupRequests[name]) {
+                if (!confirm(`Request collection request "${name}" already exists in group "${currentGroup}". Overwrite?`)) {
+                    return;
+                }
+            }
+
+            // Save to current group
+            groupRequests[name] = requestData;
+            setRequestCollectionGroupRequests(currentGroup, groupRequests);
+
+            populateRequestCollectionRequests(currentGroup);
+            document.getElementById('requestCollectionRequests').value = name;
+
+            showToast(`Request saved to "${currentGroup}" request collection group`, 'success');
         }
 
-        function populateSavedRequests() {
-            const savedRequests = JSON.parse(localStorage.getItem('savedRequests') || '{}');
-            const dropdown = elements.savedRequests;
+        function populateRequestCollectionRequests(groupName = null) {
+            const actualGroupName = groupName || getCurrentRequestCollectionGroup();
+            const groupRequests = getRequestCollectionGroupRequests(actualGroupName);
+            const dropdown = document.getElementById('requestCollectionRequests');
             const currentValue = dropdown.value;
 
-            dropdown.innerHTML = '<option value="">Select from request collections...</option>';
+            dropdown.innerHTML = '<option value="">Select a request...</option>';
 
-            Object.keys(savedRequests).sort().forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                dropdown.appendChild(option);
-            });
+            Object.keys(groupRequests)
+                .sort()
+                .forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    dropdown.appendChild(option);
+                });
 
-            if (currentValue && savedRequests[currentValue]) {
+            if (currentValue && groupRequests[currentValue]) {
                 dropdown.value = currentValue;
             }
+
+            // Enable/disable request action buttons
+            const copyRequestBtn = document.getElementById('copyRequestCollectionRequestBtn');
+            const deleteRequestBtn = document.querySelector('.btn-danger[onclick="deleteSelectedRequestCollectionRequest()"]');
+            const hasRequests = Object.keys(groupRequests).length > 0;
+
+            copyRequestBtn.disabled = !hasRequests;
+            if (deleteRequestBtn) deleteRequestBtn.disabled = !hasRequests;
         }
 
-        // FIXED: This function now properly loads the selected request
-        function loadSelectedRequest() {
-            const name = elements.savedRequests.value;
-            if (!name) {
-                // Don't show error when selecting empty option
-                return;
-            }
+        function loadSelectedRequestCollectionRequest() {
+            const name = document.getElementById('requestCollectionRequests').value;
+            const currentGroup = getCurrentRequestCollectionGroup();
 
-            const savedRequests = JSON.parse(localStorage.getItem('savedRequests') || '{}');
-            const request = savedRequests[name];
+            if (!name) return;
+
+            const groupRequests = getRequestCollectionGroupRequests(currentGroup);
+            const request = groupRequests[name];
 
             if (!request) {
-                showToast('Request not found in collections', 'error');
+                showToast('Request collection request not found', 'error');
                 return;
             }
 
             // Set method
-            elements.httpMethod.value = request.method;
+            elements.httpMethod.value = request.method || 'GET';
 
             // Set URL and payload
             elements.apiUrl.value = request.url || '';
@@ -1798,44 +2038,70 @@
                 addHeader('Accept', 'application/json');
             }
 
-            showToast(`Loaded from collections: ${name}`, 'success');
+            showToast(`Loaded from "${currentGroup}" request collection group: ${name}`, 'success');
         }
 
-        function deleteSelectedRequest() {
-            const name = elements.savedRequests.value;
+        function deleteSelectedRequestCollectionRequest() {
+            const name = document.getElementById('requestCollectionRequests').value;
+            const currentGroup = getCurrentRequestCollectionGroup();
+
             if (!name) {
-                showToast('Please select a request to delete', 'error');
+                showToast('Please select a request collection request to delete', 'error');
                 return;
             }
 
-            if (!confirm(`Are you sure you want to delete "${name}" from collections?`)) return;
+            if (!confirm(`Are you sure you want to delete "${name}" from "${currentGroup}" request collection group?`)) return;
 
-            let savedRequests = JSON.parse(localStorage.getItem('savedRequests') || '{}');
-            delete savedRequests[name];
-            localStorage.setItem('savedRequests', JSON.stringify(savedRequests));
+            const groupRequests = getRequestCollectionGroupRequests(currentGroup);
+            delete groupRequests[name];
+            setRequestCollectionGroupRequests(currentGroup, groupRequests);
 
-            populateSavedRequests();
-            showToast('Request deleted from collections', 'success');
+            populateRequestCollectionRequests(currentGroup);
+            showToast('Request collection request deleted', 'success');
         }
 
-        function exportRequests() {
-            const savedRequests = localStorage.getItem('savedRequests') || '{}';
-            const dataStr = JSON.stringify(JSON.parse(savedRequests), null, 2);
+        function copyRequestCollectionRequest() {
+            const name = document.getElementById('requestCollectionRequests').value;
+            const currentGroup = getCurrentRequestCollectionGroup();
+
+            if (!name) {
+                showToast('Please select a request collection request to copy', 'error');
+                return;
+            }
+
+            const groupRequests = getRequestCollectionGroupRequests(currentGroup);
+            const request = groupRequests[name];
+
+            if (!request) {
+                showToast('Request collection request not found', 'error');
+                return;
+            }
+
+            // Create a formatted string of the saved request
+            const requestText = `Request Collection: ${name}\nRequest Collection Group: ${currentGroup}\n\nMethod: ${request.method}\nURL: ${request.url}\n\nHeaders:\n${JSON.stringify(request.headers, null, 2)}\n\nBody:\n${request.payload}`;
+
+            copyToClipboard(requestText);
+            showToast(`Request collection request copied from "${currentGroup}" group`, 'success');
+        }
+
+        function exportRequestCollections() {
+            const requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+            const dataStr = JSON.stringify(requestCollectionGroups, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
 
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'easy-rest-client-requests.json';
+            link.download = 'easy-rest-client-request-collections.json';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            showToast('Request collections exported successfully', 'success');
+            showToast('All request collection groups exported successfully', 'success');
         }
 
-        function importRequests() {
+        function importRequestCollections() {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
@@ -1851,12 +2117,25 @@
                         throw new Error('Invalid file format');
                     }
 
-                    const current = JSON.parse(localStorage.getItem('savedRequests') || '{}');
-                    const merged = { ...current, ...imported };
+                    const current = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
 
-                    localStorage.setItem('savedRequests', JSON.stringify(merged));
-                    populateSavedRequests();
-                    showToast('Request collections imported successfully', 'success');
+                    // Merge groups, preserving existing requests
+                    Object.keys(imported).forEach(groupName => {
+                        if (!current[groupName]) {
+                            current[groupName] = {};
+                        }
+                        // Merge requests within the group
+                        current[groupName] = { ...current[groupName], ...imported[groupName] };
+                    });
+
+                    localStorage.setItem('requestCollectionGroups', JSON.stringify(current));
+
+                    // Update UI
+                    populateRequestCollectionGroups();
+                    const currentGroup = getCurrentRequestCollectionGroup();
+                    populateRequestCollectionRequests(currentGroup);
+
+                    showToast('Request collection groups imported successfully', 'success');
                 } catch (error) {
                     showToast('Import failed: ' + error.message, 'error');
                 }
@@ -1864,11 +2143,6 @@
 
             input.click();
         }
-
-        // Double-click on saved request to load it (optional extra)
-        elements.savedRequests.addEventListener('dblclick', () => {
-            loadSelectedRequest();
-        });
 
         // ========== Keyboard Shortcuts ==========
         document.addEventListener('keydown', (e) => {
@@ -1881,7 +2155,7 @@
             // Ctrl+S to save request
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                saveRequest();
+                saveRequestCollectionRequest();
             }
 
             // Ctrl+V to paste in payload when focused
@@ -1901,12 +2175,37 @@
             const currentYear = now.getFullYear();
             copyrightMessage.textContent = copyrightMessage.textContent + currentYear;
 
-            // Populate saved requests
-            populateSavedRequests();
+            // Initialize request collection groups
+            const requestCollectionGroups = JSON.parse(localStorage.getItem('requestCollectionGroups') || '{}');
+
+            // Ensure "Default" group exists
+            if (!requestCollectionGroups['Default']) {
+                requestCollectionGroups['Default'] = {};
+                localStorage.setItem('requestCollectionGroups', JSON.stringify(requestCollectionGroups));
+            }
+
+            // Populate groups dropdown
+            populateRequestCollectionGroups();
+
+            // Restore last selected group or use "Default"
+            const lastGroup = localStorage.getItem('currentRequestCollectionGroup') || 'Default';
+            const groupSelect = document.getElementById('requestCollectionGroups');
+            groupSelect.value = lastGroup;
+
+            // Initialize event listener for group selection
+            groupSelect.addEventListener('change', onRequestCollectionGroupSelected);
+
+            // Trigger initial group selection
+            onRequestCollectionGroupSelected();
 
             // Show initial state
             elements.responseEmpty.classList.remove('hidden');
         }
+
+        // Double-click on request collection request to load it
+        document.getElementById('requestCollectionRequests').addEventListener('dblclick', () => {
+            loadSelectedRequestCollectionRequest();
+        });
 
         // Start the application
         document.addEventListener('DOMContentLoaded', init);
