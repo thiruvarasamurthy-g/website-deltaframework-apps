@@ -1118,20 +1118,20 @@ textarea.form-control {
 
 /* Force all footer links to be blue */
 footer a {
-    color: darkblue; /* normal state */
+    color: #2563eb; /* normal state */
     text-decoration: none; /* optional: remove underline */
 }
 
     footer a:visited {
-        color: darkblue; /* visited links stay blue */
+        color: #2563eb; /* visited links stay blue */
     }
 
     footer a:hover {
-        color: darkblue; /* optional: darker blue on hover */
+        color: #2563eb; /* optional: darker blue on hover */
     }
 
     footer a:active {
-        color: darkblue; /* active (clicked) stays blue */
+        color: #2563eb; /* active (clicked) stays blue */
     }
 
 
