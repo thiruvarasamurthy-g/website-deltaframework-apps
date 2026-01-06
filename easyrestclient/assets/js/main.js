@@ -380,6 +380,7 @@ const DialogSystem = {
             // Show dialog with animation
             setTimeout(() => {
                 overlay.classList.add('show');
+                toggleBodyScroll(true);
             }, 10);
 
             // Focus input for prompt dialogs
@@ -396,6 +397,7 @@ const DialogSystem = {
             // Setup event handlers
             const cleanup = () => {
                 overlay.classList.remove('show');
+                toggleBodyScroll(false); // <-- ADD THIS LINE
                 setTimeout(() => {
                     if (overlay.parentNode) {
                         overlay.parentNode.removeChild(overlay);
@@ -539,6 +541,11 @@ function setTheme(dark, persist = true) {
  * @param {string} key - Header name
  * @param {string} value - Header value
  */
+/**
+ * Add a header row to the headers container
+ * @param {string} key - Header name
+ * @param {string} value - Header value
+ */
 function addHeader(key = '', value = '') {
     const headerRow = document.createElement('div');
     headerRow.className = 'header-row';
@@ -557,6 +564,24 @@ function addHeader(key = '', value = '') {
     valueInput.placeholder = 'Header Value';
     valueInput.value = value;
 
+    // Create decode button (only show for Authorization headers or headers containing "token")
+    const decodeButton = document.createElement('button');
+    decodeButton.className = 'header-decode';
+    decodeButton.innerHTML = '<i class="fas fa-code"></i>';
+    decodeButton.title = 'Decode Token';
+    decodeButton.style.display = 'none'; // Hidden by default
+
+    // Show decode button for Authorization headers or headers with "token" in name
+    if (key.toLowerCase().includes('authorization') ||
+        key.toLowerCase().includes('token') ||
+        key.toLowerCase().includes('jwt')) {
+        decodeButton.style.display = 'flex';
+    }
+
+    decodeButton.onclick = function () {
+        decodeToken(valueInput.value, keyInput.value);
+    };
+
     // Create remove button
     const removeButton = document.createElement('button');
     removeButton.className = 'header-remove';
@@ -565,9 +590,22 @@ function addHeader(key = '', value = '') {
         headerRow.remove();
     };
 
+    // Update decode button visibility when key changes
+    keyInput.addEventListener('input', function () {
+        const keyValue = this.value.toLowerCase();
+        if (keyValue.includes('authorization') ||
+            keyValue.includes('token') ||
+            keyValue.includes('jwt')) {
+            decodeButton.style.display = 'flex';
+        } else {
+            decodeButton.style.display = 'none';
+        }
+    });
+
     // Append all elements
     headerRow.appendChild(keyInput);
     headerRow.appendChild(valueInput);
+    headerRow.appendChild(decodeButton);
     headerRow.appendChild(removeButton);
 
     elements.headersContainer.appendChild(headerRow);
@@ -1828,6 +1866,7 @@ async function createMultiInputDialog(title, inputs) {
         // Show dialog
         setTimeout(() => {
             overlay.classList.add('show');
+            toggleBodyScroll(true);
         }, 10);
 
         // Focus first input
@@ -1857,6 +1896,7 @@ async function createMultiInputDialog(title, inputs) {
         // Handle cancel/close
         const cleanup = () => {
             overlay.classList.remove('show');
+            toggleBodyScroll(false);
             setTimeout(() => {
                 if (overlay.parentNode) {
                     overlay.parentNode.removeChild(overlay);
@@ -1892,6 +1932,1354 @@ async function createMultiInputDialog(title, inputs) {
             }
         });
     });
+}
+
+// ========== Enhanced Token Decoder ==========
+
+/**
+ * Detect token type
+ * @param {string} token - The token string
+ * @returns {Object} Token type and clean token
+ */
+function detectTokenType(token) {
+    let cleanToken = token.trim();
+    let type = 'unknown';
+    let prefix = '';
+
+    // Remove common prefixes
+    const prefixes = [
+        { prefix: 'Bearer ', type: 'bearer' },
+        { prefix: 'Basic ', type: 'basic' },
+        { prefix: 'Digest ', type: 'digest' },
+        { prefix: 'MAC ', type: 'mac' },
+        { prefix: 'OAuth ', type: 'oauth' },
+        { prefix: 'JWT ', type: 'jwt' },
+        { prefix: 'Token ', type: 'token' }
+    ];
+
+    for (const { prefix: p, type: t } of prefixes) {
+        if (cleanToken.startsWith(p)) {
+            cleanToken = cleanToken.substring(p.length);
+            prefix = p.trim();
+            type = t;
+            break;
+        }
+    }
+
+    // Detect JWT by structure (3 parts separated by dots)
+    const parts = cleanToken.split('.');
+    if (parts.length === 3) {
+        // Check if it's a valid JWT
+        try {
+            // Try to decode header to confirm
+            const header = base64UrlDecode(parts[0]);
+            const headerObj = JSON.parse(header);
+            if (headerObj && headerObj.typ) {
+                type = 'jwt';
+            }
+        } catch (e) {
+            // Not a JWT
+        }
+    }
+
+    // Detect MAC tokens (commonly base64 encoded)
+    if (type === 'unknown' && cleanToken.length >= 32 && cleanToken.length <= 128) {
+        try {
+            // Try to base64 decode
+            atob(cleanToken.replace(/-/g, '+').replace(/_/g, '/'));
+            type = 'mac';
+        } catch (e) {
+            // Not base64
+        }
+    }
+
+    // Detect OAuth access tokens (often alphanumeric, 40-128 chars)
+    if (type === 'unknown' && /^[A-Za-z0-9_\-]+$/.test(cleanToken)) {
+        const len = cleanToken.length;
+        if (len >= 40 && len <= 128) {
+            type = 'oauth';
+        }
+    }
+
+    return { type, cleanToken, prefix };
+}
+
+/**
+ * Enhanced decode token function
+ * @param {string} token - The token to decode
+ * @param {string} headerName - The name of the header
+ */
+function decodeToken(token, headerName = '') {
+    if (!token || token.trim() === '') {
+        DialogSystem.showInfo(
+            'No Token',
+            'Please enter a token in the header value field to decode.'
+        );
+        return;
+    }
+
+    // Detect token type
+    const { type, cleanToken, prefix } = detectTokenType(token);
+
+    // Decode based on type
+    let decoded;
+    switch (type) {
+        case 'jwt':
+            decoded = decodeJWT(cleanToken);
+            break;
+        case 'bearer':
+            decoded = decodeBearerToken(cleanToken);
+            break;
+        case 'basic':
+            decoded = decodeBasicToken(cleanToken);
+            break;
+        case 'mac':
+            decoded = decodeMACToken(cleanToken);
+            break;
+        case 'oauth':
+            decoded = decodeOAuthToken(cleanToken);
+            break;
+        case 'digest':
+            decoded = decodeDigestToken(cleanToken);
+            break;
+        default:
+            decoded = decodeUnknownToken(cleanToken);
+    }
+
+    if (decoded.error) {
+        DialogSystem.showInfo(
+            'Unable to Decode',
+            `Token type: ${type}\nError: ${decoded.error}`
+        );
+        return;
+    }
+
+    // Show the decoded token in a dialog
+    showTokenDecoderDialog(decoded, headerName, token, type, prefix);
+}
+
+/**
+ * Decode JWT token
+ * @param {string} token - JWT token
+ * @returns {Object} Decoded token data
+ */
+function decodeJWT(token) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return { error: 'Invalid JWT format - expected 3 parts' };
+        }
+
+        const header = base64UrlDecode(parts[0]);
+        const payload = base64UrlDecode(parts[1]);
+        const signature = parts[2];
+
+        const headerObj = JSON.parse(header);
+        const payloadObj = JSON.parse(payload);
+
+        const validation = validateJWT(headerObj, payloadObj);
+
+        return {
+            type: 'jwt',
+            header: headerObj,
+            payload: payloadObj,
+            signature: signature,
+            parts: parts,
+            validation: validation,
+            raw: {
+                header: header,
+                payload: payload,
+                signature: signature
+            },
+            algorithm: headerObj.alg,
+            tokenType: headerObj.typ
+        };
+    } catch (error) {
+        return { error: `JWT decoding failed: ${error.message}` };
+    }
+}
+
+/**
+ * Decode Bearer token (generic)
+ * @param {string} token - Bearer token
+ * @returns {Object} Decoded token data
+ */
+function decodeBearerToken(token) {
+    try {
+        // Try to detect if it's actually a JWT
+        if (token.split('.').length === 3) {
+            const jwtDecoded = decodeJWT(token);
+            if (!jwtDecoded.error) {
+                return {
+                    ...jwtDecoded,
+                    type: 'jwt',
+                    scheme: 'bearer'
+                };
+            }
+        }
+
+        // Try to base64 decode
+        let decoded;
+        let isBase64 = false;
+        try {
+            decoded = atob(token.replace(/-/g, '+').replace(/_/g, '/'));
+            isBase64 = true;
+        } catch (e) {
+            decoded = token;
+        }
+
+        // Try to parse as JSON
+        let parsed;
+        let format = 'string';
+        try {
+            parsed = JSON.parse(decoded);
+            format = 'json';
+        } catch (e) {
+            parsed = decoded;
+        }
+
+        // Determine if this is actually a known format or just a string
+        let contentType = 'unknown';
+        if (isBase64 && format === 'json') {
+            contentType = 'json_base64';
+        } else if (isBase64) {
+            contentType = 'base64';
+        } else if (format === 'json') {
+            contentType = 'json';
+        } else if (token.length < 10) {
+            // Very short tokens are likely not secure tokens
+            contentType = 'simple_string';
+        }
+
+        return {
+            type: contentType,
+            scheme: 'bearer',
+            format: format,
+            value: parsed,
+            raw: token,
+            length: token.length,
+            isBase64: isBase64,
+            isSimpleString: token.length < 10 && !isBase64 && format === 'string'
+        };
+    } catch (error) {
+        return { error: `Bearer token analysis failed: ${error.message}` };
+    }
+}
+
+/**
+ * Decode Basic authentication token
+ * @param {string} token - Base64 encoded username:password
+ * @returns {Object} Decoded token data
+ */
+function decodeBasicToken(token) {
+    try {
+        // Basic auth is base64 encoded username:password
+        const decoded = atob(token);
+        const parts = decoded.split(':');
+
+        return {
+            type: 'basic',
+            username: parts[0] || '',
+            password: parts.slice(1).join(':') || '',
+            raw: decoded,
+            format: 'username:password',
+            isBase64: true
+        };
+    } catch (error) {
+        return { error: `Basic auth decoding failed: ${error.message}` };
+    }
+}
+
+/**
+ * Decode MAC token
+ * @param {string} token - MAC token
+ * @returns {Object} Decoded token data
+ */
+function decodeMACToken(token) {
+    try {
+        // MAC tokens are usually base64 encoded
+        let decoded;
+        try {
+            decoded = atob(token.replace(/-/g, '+').replace(/_/g, '/'));
+        } catch (e) {
+            decoded = token;
+        }
+
+        // MAC tokens often have structure: id:nonce:mac
+        const parts = decoded.split(':');
+
+        return {
+            type: 'mac',
+            parts: parts,
+            id: parts[0] || null,
+            nonce: parts[1] || null,
+            mac: parts[2] || token,
+            format: parts.length >= 3 ? 'id:nonce:mac' : 'unknown',
+            isBase64: decoded !== token,
+            raw: token,
+            decoded: decoded
+        };
+    } catch (error) {
+        return { error: `MAC token analysis failed: ${error.message}` };
+    }
+}
+
+/**
+ * Decode OAuth token
+ * @param {string} token - OAuth token
+ * @returns {Object} Decoded token data
+ */
+function decodeOAuthToken(token) {
+    // OAuth tokens can be access tokens or refresh tokens
+    // They're typically opaque strings
+
+    const patterns = [
+        { pattern: /^[A-Za-z0-9]{40}$/, type: 'access_token_v1' },
+        { pattern: /^[A-Za-z0-9_\-]{43}$/, type: 'access_token_v2' },
+        { pattern: /^[A-Za-z0-9_\-]{64}$/, type: 'refresh_token' },
+        { pattern: /^[A-Za-z0-9_\-]{86}$/, type: 'id_token' }
+    ];
+
+    let tokenType = 'unknown';
+    for (const { pattern, type } of patterns) {
+        if (pattern.test(token)) {
+            tokenType = type;
+            break;
+        }
+    }
+
+    return {
+        type: 'oauth',
+        tokenType: tokenType,
+        value: token,
+        length: token.length,
+        isBase64: /^[A-Za-z0-9_\-]+=*$/.test(token) && token.length % 4 === 0,
+        characteristics: {
+            hasLetters: /[A-Za-z]/.test(token),
+            hasNumbers: /\d/.test(token),
+            hasSpecial: /[_\-]/.test(token),
+            isAlphanumeric: /^[A-Za-z0-9]+$/.test(token)
+        }
+    };
+}
+
+/**
+ * Decode Digest authentication token
+ * @param {string} token - Digest token string
+ * @returns {Object} Decoded token data
+ */
+function decodeDigestToken(token) {
+    try {
+        // Remove "Digest " prefix if present
+        let cleanToken = token.trim();
+        if (cleanToken.startsWith('Digest ')) {
+            cleanToken = cleanToken.substring(7);
+        }
+
+        // Parse Digest token components
+        const components = {};
+        const parts = cleanToken.split(', ');
+
+        parts.forEach(part => {
+            const equalsIndex = part.indexOf('=');
+            if (equalsIndex !== -1) {
+                const key = part.substring(0, equalsIndex).trim();
+                let value = part.substring(equalsIndex + 1).trim();
+
+                // Remove surrounding quotes if present
+                if (value.startsWith('"') && value.endsWith('"')) {
+                    value = value.substring(1, value.length - 1);
+                }
+
+                components[key.toLowerCase()] = value;
+            }
+        });
+
+        return {
+            type: 'digest',
+            scheme: 'digest',
+            components: components,
+            username: components.username,
+            realm: components.realm,
+            nonce: components.nonce,
+            uri: components.uri,
+            algorithm: components.algorithm || 'MD5',
+            response: components.response,
+            opaque: components.opaque,
+            qop: components.qop,
+            nc: components.nc,
+            cnonce: components.cnonce,
+            raw: token
+        };
+    } catch (error) {
+        return { error: `Digest token parsing failed: ${error.message}` };
+    }
+}
+
+/**
+ * Decode unknown token
+ * @param {string} token - Unknown token
+ * @returns {Object} Token analysis
+ */
+function decodeUnknownToken(token) {
+    const analysis = {
+        type: 'unknown',
+        raw: token,
+        length: token.length,
+        isBase64: false,
+        isJWT: false,
+        isJSON: false,
+        isBase64Encoded: false,
+        analysis: {}
+    };
+
+    // Check if it's base64
+    try {
+        const decoded = atob(token.replace(/-/g, '+').replace(/_/g, '/'));
+        analysis.isBase64Encoded = true;
+        analysis.base64Decoded = decoded;
+
+        // Check if decoded is JSON
+        try {
+            const json = JSON.parse(decoded);
+            analysis.isJSON = true;
+            analysis.jsonParsed = json;
+        } catch (e) {
+            // Not JSON
+        }
+    } catch (e) {
+        // Not base64
+    }
+
+    // Check if it's JWT
+    const parts = token.split('.');
+    if (parts.length === 3) {
+        analysis.isJWT = true;
+        analysis.jwtParts = parts.map(part => ({
+            length: part.length,
+            isBase64Url: /^[A-Za-z0-9_\-]+$/.test(part)
+        }));
+    }
+
+    // Character analysis
+    analysis.characters = {
+        total: token.length,
+        letters: (token.match(/[A-Za-z]/g) || []).length,
+        numbers: (token.match(/\d/g) || []).length,
+        special: (token.match(/[^A-Za-z0-9]/g) || []).length,
+        uppercase: (token.match(/[A-Z]/g) || []).length,
+        lowercase: (token.match(/[a-z]/g) || []).length
+    };
+
+    // Common token format detection
+    if (/^[A-Za-z0-9]{32}$/.test(token)) {
+        analysis.suggestedType = 'API Key / MD5 Hash';
+    } else if (/^[A-Za-z0-9]{40}$/.test(token)) {
+        analysis.suggestedType = 'SHA-1 Hash / Access Token';
+    } else if (/^[A-Za-z0-9]{64}$/.test(token)) {
+        analysis.suggestedType = 'SHA-256 Hash / Refresh Token';
+    } else if (token.startsWith('eyJ') && parts.length === 3) {
+        analysis.suggestedType = 'JWT Token';
+    }
+
+    return analysis;
+}
+
+/**
+ * Decode base64Url encoded string
+ * @param {string} str - base64Url encoded string
+ * @returns {string} Decoded string
+ */
+function base64UrlDecode(str) {
+    // Replace URL-safe base64 characters
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Add padding if necessary
+    while (base64.length % 4) {
+        base64 += '=';
+    }
+
+    // Decode and handle UTF-8
+    const decoded = atob(base64);
+    return decodeURIComponent(
+        decoded.split('').map(c => {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join('')
+    );
+}
+
+/**
+ * Validate JWT token structure
+ * @param {Object} header - Decoded header
+ * @param {Object} payload - Decoded payload
+ * @returns {Object} Validation results
+ */
+function validateJWT(header, payload) {
+    const validations = [];
+
+    // Check header
+    if (!header.alg) {
+        validations.push({ type: 'warning', message: 'No algorithm specified in header' });
+    } else {
+        validations.push({ type: 'success', message: `Algorithm: ${header.alg}` });
+    }
+
+    if (!header.typ || header.typ !== 'JWT') {
+        validations.push({ type: 'warning', message: 'Token type is not JWT' });
+    } else {
+        validations.push({ type: 'success', message: 'Token type: JWT' });
+    }
+
+    // Check payload expiration
+    if (payload.exp) {
+        const expDate = new Date(payload.exp * 1000);
+        const now = new Date();
+
+        if (expDate < now) {
+            validations.push({
+                type: 'danger',
+                message: `Token expired on ${expDate.toLocaleString()}`
+            });
+        } else {
+            validations.push({
+                type: 'success',
+                message: `Token expires on ${expDate.toLocaleString()}`
+            });
+        }
+    } else {
+        validations.push({ type: 'info', message: 'No expiration time (exp) in token' });
+    }
+
+    // Check issued at
+    if (payload.iat) {
+        const iatDate = new Date(payload.iat * 1000);
+        validations.push({
+            type: 'info',
+            message: `Token issued at ${iatDate.toLocaleString()}`
+        });
+    }
+
+    // Check not before
+    if (payload.nbf) {
+        const nbfDate = new Date(payload.nbf * 1000);
+        const now = new Date();
+
+        if (nbfDate > now) {
+            validations.push({
+                type: 'warning',
+                message: `Token not valid until ${nbfDate.toLocaleString()}`
+            });
+        }
+    }
+
+    return validations;
+}
+
+/**
+ * Show token decoder dialog for any token type
+ * @param {Object} decoded - Decoded token data
+ * @param {string} headerName - Header name
+ * @param {string} originalToken - Original token string
+ * @param {string} tokenType - Detected token type
+ * @param {string} prefix - Token prefix
+ */
+async function showTokenDecoderDialog(decoded, headerName, originalToken, tokenType, prefix = '') {
+    // Generate dialog content based on token type
+    const dialogHTML = generateTokenDialogHTML(decoded, headerName, originalToken, tokenType, prefix);
+
+    // Create and show dialog
+    const { dialogElement, closeDialog } = await createCustomDialog('Token Decoder', dialogHTML, `token-decoder-dialog ${tokenType}-token`);
+
+    // Add event listeners
+    setupTokenDialogEventListeners(dialogElement, decoded, originalToken, closeDialog);
+}
+
+/**
+ * Generate dialog HTML based on token type
+ */
+function generateTokenDialogHTML(decoded, headerName, originalToken, tokenType, prefix) {
+    let content = '';
+    let displayType = '';
+
+    // Determine what to show in the title based on decoded type
+    if (decoded.type === 'jwt' && tokenType === 'bearer') {
+        displayType = 'JWT (Bearer)';
+    } else if (decoded.type === 'unknown' && tokenType === 'bearer') {
+        displayType = 'Bearer Token (Unknown Format)';
+    } else if (decoded.type !== tokenType) {
+        displayType = `${decoded.type.toUpperCase()} (${tokenType})`;
+    } else {
+        displayType = tokenType.toUpperCase();
+    }
+
+    switch (decoded.type) {
+        case 'jwt':
+            content = generateJWTContent(decoded);
+            break;
+        case 'basic':
+            content = generateBasicAuthContent(decoded);
+            displayType = 'Basic Authentication';
+            break;
+        case 'mac':
+            content = generateMACContent(decoded);
+            displayType = 'MAC Token';
+            break;
+        case 'oauth':
+            content = generateOAuthContent(decoded);
+            displayType = 'OAuth Token';
+            break;
+        case 'bearer':
+            content = generateBearerContent(decoded);
+            displayType = 'Bearer Token';
+            break;
+        case 'digest':
+            content = generateDigestContent(decoded);
+            displayType = 'Digest Authentication';
+            break;
+        default:
+            content = generateUnknownTokenContent(decoded);
+            displayType = 'Unknown Token';
+    }
+
+    return `
+        <div class="dialog-header">
+            <div class="dialog-title">
+                <i class="fas fa-key"></i> Token Decoder - ${displayType}
+                ${prefix ? `<span style="font-size: 12px; color: var(--text-tertiary); margin-left: 8px;">(${prefix})</span>` : ''}
+            </div>
+            <button class="dialog-close" id="tokenDecoderCloseBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="dialog-body">
+            ${headerName ? `<div class="dialog-message"><strong>Header:</strong> ${headerName}</div>` : ''}
+            
+            ${content}
+        </div>
+        <div class="dialog-footer">
+             <!-- Comment out the Analyze button -->
+        <!--
+        <button class="btn dialog-btn-secondary" id="analyzeTokenBtn">
+            <i class="fas fa-search"></i> Analyze
+        </button>
+        -->
+            <button class="btn dialog-btn-secondary" id="copyFullTokenBtn">
+                <i class="fas fa-copy"></i> Copy Token
+            </button>
+            <button class="btn dialog-btn-primary" id="closeTokenDecoderBtn">
+                Close
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Generate content for simple string tokens
+ */
+function generateSimpleStringContent(decoded) {
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #ef4444;">
+                <div class="token-part-header">
+                    <span> Simple String Token</span>
+                </div>
+                <div class="token-part-body">
+                    <div style="margin-bottom: 16px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-sm);">
+                        <i class="fas fa-exclamation-triangle" style="color: #ef4444; margin-right: 8px;"></i>
+                        <strong>Security Warning:</strong> This appears to be a simple string token, not a cryptographically secure token format.
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <strong>Token Value:</strong>
+                        <div class="token-json" style="font-size: 14px; padding: 8px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            ${decoded.value}
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px;">
+                        <div>
+                            <strong>Type:</strong> Simple String
+                        </div>
+                        <div>
+                            <strong>Length:</strong> ${decoded.length} chars
+                        </div>
+                        <div>
+                            <strong>Base64:</strong> ${decoded.isBase64 ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>JSON:</strong> ${decoded.format === 'json' ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>Secure:</strong> No
+                        </div>
+                        <div>
+                            <strong>Recommendation:</strong> Use JWT/OAuth
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                        <strong>Why this might be insecure:</strong>
+                        <ul style="margin-top: 8px; padding-left: 20px; font-size: 12px;">
+                            <li>Too short for proper entropy</li>
+                            <li>No cryptographic signature</li>
+                            <li>Can't expire or be revoked easily</li>
+                            <li>No claims/scope information</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate Bearer token content
+ */
+function generateBearerContent(decoded) {
+    const isJWT = decoded.type === 'jwt';
+
+    if (isJWT) {
+        // If it's actually a JWT, show JWT content
+        return generateJWTContent(decoded);
+    }
+
+    // Check if it's a simple string
+    if (decoded.isSimpleString || (decoded.type === 'simple_string')) {
+        return generateSimpleStringContent(decoded);
+    }
+
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #059669;">
+                <div class="token-part-header">
+                    <span>Bearer Token Analysis</span>
+                </div>
+                <div class="token-part-body">
+                    <div style="margin-bottom: 16px;">
+                        <strong>Token Format:</strong> ${decoded.format || 'string'}
+                        ${decoded.isBase64 ? ' (Base64 encoded)' : ''}
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <strong>Token Value:</strong>
+                        <div class="token-json" style="font-size: 12px; max-height: 150px; overflow-y: auto;">
+                            ${typeof decoded.value === 'object'
+            ? JSON.stringify(decoded.value, null, 2)
+            : decoded.value}
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px;">
+                        <div>
+                            <strong>Type:</strong> ${decoded.type || 'Bearer'}
+                        </div>
+                        <div>
+                            <strong>Length:</strong> ${decoded.length} chars
+                        </div>
+                        <div>
+                            <strong>Base64:</strong> ${decoded.isBase64 ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>Structure:</strong> ${decoded.format === 'json' ? 'JSON' : 'Plain text'}
+                        </div>
+                    </div>
+                    
+                    ${decoded.isBase64 && decoded.format !== 'json' ? `
+                        <div style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            <strong>Base64 Decoded:</strong>
+                            <div class="token-json" style="margin-top: 8px; font-size: 12px; word-break: break-all;">
+                                ${decoded.value}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate Digest token content
+ */
+function generateDigestContent(decoded) {
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #f59e0b;">
+                <div class="token-part-header">
+                    <span>Digest Authentication</span>
+                </div>
+                <div class="token-part-body">
+                    <div style="margin-bottom: 16px;">
+                        <strong>Algorithm:</strong> ${decoded.algorithm}
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-bottom: 16px; font-size: 13px;">
+                        ${decoded.username ? `<div><strong>Username:</strong></div><div>${decoded.username}</div>` : ''}
+                        ${decoded.realm ? `<div><strong>Realm:</strong></div><div>${decoded.realm}</div>` : ''}
+                        ${decoded.nonce ? `<div><strong>Nonce:</strong></div><div class="token-json" style="padding: 4px 8px; font-size: 11px;">${decoded.nonce}</div>` : ''}
+                        ${decoded.uri ? `<div><strong>URI:</strong></div><div>${decoded.uri}</div>` : ''}
+                        ${decoded.response ? `<div><strong>Response:</strong></div><div class="token-json" style="padding: 4px 8px; font-size: 11px; word-break: break-all;">${decoded.response}</div>` : ''}
+                        ${decoded.opaque ? `<div><strong>Opaque:</strong></div><div class="token-json" style="padding: 4px 8px; font-size: 11px;">${decoded.opaque}</div>` : ''}
+                        ${decoded.qop ? `<div><strong>QOP:</strong></div><div>${decoded.qop}</div>` : ''}
+                        ${decoded.nc ? `<div><strong>Nonce Count:</strong></div><div>${decoded.nc}</div>` : ''}
+                        ${decoded.cnonce ? `<div><strong>Client Nonce:</strong></div><div class="token-json" style="padding: 4px 8px; font-size: 11px;">${decoded.cnonce}</div>` : ''}
+                    </div>
+                    
+                    <div style="font-size: 12px; color: var(--text-tertiary);">
+                        <div>Length: ${decoded.raw.length} characters</div>
+                        <div>Scheme: Digest Authentication</div>
+                        <div>Components: ${Object.keys(decoded.components || {}).length} key-value pairs</div>
+                    </div>
+                    
+                    <div style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                        <strong>Digest Authentication Flow:</strong>
+                        <div style="margin-top: 8px; font-size: 12px;">
+                            1. Server challenges with WWW-Authenticate header<br>
+                            2. Client computes: HA1 = MD5(username:realm:password)<br>
+                            3. Client computes: HA2 = MD5(method:uri)<br>
+                            4. Client computes: response = MD5(HA1:nonce:nc:cnonce:qop:HA2)<br>
+                            5. Client sends Authorization header with computed response
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate Unknown token content
+ */
+function generateUnknownTokenContent(decoded) {
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #64748b;">
+                <div class="token-part-header">
+                    <span>Token Analysis</span>
+                    <span style="font-size: 12px; color: var(--text-tertiary);">
+                        ${decoded.suggestedType || 'Unknown Format'}
+                    </span>
+                </div>
+                <div class="token-part-body">
+                    <div style="margin-bottom: 16px;">
+                        <strong>Raw Token:</strong>
+                        <div class="token-json" style="font-size: 11px; word-break: break-all; max-height: 100px; overflow-y: auto;">
+                            ${decoded.raw}
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; font-size: 13px;">
+                        <div>
+                            <strong>Length:</strong> ${decoded.length} chars
+                        </div>
+                        <div>
+                            <strong>Base64:</strong> ${decoded.isBase64Encoded ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>JSON:</strong> ${decoded.isJSON ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>JWT:</strong> ${decoded.isJWT ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>Letters:</strong> ${decoded.characters?.letters || 0}
+                        </div>
+                        <div>
+                            <strong>Numbers:</strong> ${decoded.characters?.numbers || 0}
+                        </div>
+                        <div>
+                            <strong>Special:</strong> ${decoded.characters?.special || 0}
+                        </div>
+                        <div>
+                            <strong>Uppercase:</strong> ${decoded.characters?.uppercase || 0}
+                        </div>
+                        <div>
+                            <strong>Lowercase:</strong> ${decoded.characters?.lowercase || 0}
+                        </div>
+                    </div>
+                    
+                    ${decoded.isBase64Encoded ? `
+                        <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            <strong>Base64 Decoded:</strong>
+                            <div class="token-json" style="margin-top: 8px; font-size: 11px; word-break: break-all; max-height: 100px; overflow-y: auto;">
+                                ${decoded.base64Decoded}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${decoded.isJSON ? `
+                        <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            <strong>JSON Parsed:</strong>
+                            <div class="token-json" style="margin-top: 8px; font-size: 11px; max-height: 150px; overflow-y: auto;">
+                                ${JSON.stringify(decoded.jsonParsed, null, 2)}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${decoded.isJWT ? `
+                        <div style="padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            <strong>JWT Structure Detected:</strong>
+                            <div style="margin-top: 8px; font-size: 12px;">
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    ${decoded.jwtParts.map((part, index) => `
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-weight: 600; width: 80px;">Part ${index + 1}:</span>
+                                            <span style="font-family: var(--font-mono); font-size: 11px;">
+                                                ${part.length} chars, ${part.isBase64Url ? 'Base64Url' : 'Unknown format'}
+                                            </span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button class="btn btn-sm btn-primary" onclick="tryDecodeAsJWT('${encodeURIComponent(decoded.raw)}')" 
+                                        style="margin-top: 12px; font-size: 12px;">
+                                    <i class="fas fa-code"></i> Try to decode as JWT
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Setup token dialog event listeners
+ */
+function setupTokenDialogEventListeners(dialogElement, decoded, originalToken, closeDialog) {
+    // Copy buttons for token parts
+    dialogElement.querySelectorAll('.token-copy-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const text = decodeURIComponent(this.getAttribute('data-copy'));
+            copyToClipboard(text);
+            showToast('Copied to clipboard', 'success');
+        });
+    });
+
+    // Copy full token button
+    dialogElement.querySelector('#copyFullTokenBtn').addEventListener('click', () => {
+        copyToClipboard(originalToken);
+        showToast('Token copied to clipboard', 'success');
+    });
+
+    // ADD THIS SECTION FOR BASIC AUTH PASSWORD SHOW/HIDE
+    const showPasswordBtn = dialogElement.querySelector('#showBasicPasswordBtn');
+    if (showPasswordBtn) {
+        showPasswordBtn.addEventListener('click', function () {
+            const passwordDiv = dialogElement.querySelector('#basicPassword');
+            if (passwordDiv) {
+                //Get the actual password FIRST (outside if/else)
+                const actualPassword = passwordDiv.getAttribute('data-password') || '';
+                const isBlurred = passwordDiv.style.filter === 'blur(4px)' ||
+                    passwordDiv.style.filter.includes('blur');
+
+                if (isBlurred) {
+                    passwordDiv.textContent = actualPassword;
+                    passwordDiv.style.filter = 'none';
+                    this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Password';
+                    showToast('Password revealed', 'info');
+                } else {
+                    // Hide password
+                    const passwordLength = actualPassword.length;
+                    passwordDiv.textContent = '•'.repeat(passwordLength || 8);
+                    passwordDiv.style.filter = 'blur(4px)';
+                    this.innerHTML = '<i class="fas fa-eye"></i> Show Password';
+                }
+            }
+        });
+    }
+
+    // Close buttons
+    dialogElement.querySelector('#closeTokenDecoderBtn').addEventListener('click', closeDialog);
+    dialogElement.querySelector('#tokenDecoderCloseBtn').addEventListener('click', closeDialog);
+}
+
+/**
+ * Try to decode as JWT (for unknown tokens)
+ */
+function tryDecodeAsJWT(token) {
+    const decoded = decodeJWT(decodeURIComponent(token));
+    if (decoded.error) {
+        DialogSystem.showInfo(
+            'Decode Failed',
+            `Cannot decode as JWT: ${decoded.error}`
+        );
+    } else {
+        // Close current dialog and open JWT decoder
+        document.querySelectorAll('.dialog-overlay').forEach(overlay => {
+            overlay.classList.remove('show');
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        });
+
+        // Show JWT decoder
+        setTimeout(() => {
+            showTokenDecoderDialog(decoded, '', decodeURIComponent(token), 'jwt', '');
+        }, 350);
+    }
+}
+
+/**
+ * Analyze token details
+ */
+async function analyzeTokenDetails(decoded, originalToken) {
+    let analysis = `Token Analysis Report\n\n`;
+    analysis += `Type: ${decoded.type.toUpperCase()}\n`;
+    analysis += `Length: ${originalToken.length} characters\n`;
+    analysis += `Prefix: ${decoded.prefix || 'None'}\n\n`;
+
+    if (decoded.type === 'jwt') {
+        analysis += `JWT Specific:\n`;
+        analysis += `- Algorithm: ${decoded.algorithm || 'Unknown'}\n`;
+        analysis += `- Token Type: ${decoded.tokenType || 'Unknown'}\n`;
+        analysis += `- Header Size: ${JSON.stringify(decoded.header).length} chars\n`;
+        analysis += `- Payload Size: ${JSON.stringify(decoded.payload).length} chars\n`;
+        analysis += `- Signature Size: ${decoded.signature.length} chars\n\n`;
+
+        if (decoded.payload.exp) {
+            const expDate = new Date(decoded.payload.exp * 1000);
+            const now = new Date();
+            const hoursLeft = Math.round((expDate - now) / (1000 * 60 * 60));
+            analysis += `Expiration: ${expDate.toLocaleString()}\n`;
+            analysis += `Time Left: ${hoursLeft > 0 ? `${hoursLeft} hours` : 'EXPIRED'}\n`;
+        }
+    }
+
+    analysis += `\nSecurity Recommendations:\n`;
+    if (decoded.type === 'basic') {
+        analysis += `Basic authentication is insecure over HTTP. Use HTTPS.\n`;
+        analysis += `Consider using Bearer tokens or OAuth instead.\n`;
+    } else if (decoded.type === 'jwt' && decoded.algorithm === 'none') {
+        analysis += `CRITICAL: JWT uses "none" algorithm - this is insecure!\n`;
+    } else if (decoded.type === 'jwt' && decoded.algorithm && decoded.algorithm.startsWith('HS')) {
+        analysis += `JWT uses HMAC signature - verify secret key is strong.\n`;
+    }
+
+    await DialogSystem.alert({
+        title: 'Token Analysis',
+        message: `<pre style="font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">${analysis}</pre>`
+    });
+}
+
+/**
+ * Generate JWT token content
+ */
+function generateJWTContent(decoded) {
+    return `
+        <div class="token-parts">
+            <div class="token-part jwt-header">
+                <div class="token-part-header">
+                    <span>Header (${decoded.algorithm || 'Unknown Algorithm'})</span>
+                    <button class="token-copy-btn" data-copy="${encodeURIComponent(JSON.stringify(decoded.header, null, 2))}">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="token-part-body">
+                    <div class="token-json">${JSON.stringify(decoded.header, null, 2)}</div>
+                </div>
+            </div>
+            
+            <div class="token-part jwt-payload">
+                <div class="token-part-header">
+                    <span>Payload (Claims)</span>
+                    <button class="token-copy-btn" data-copy="${encodeURIComponent(JSON.stringify(decoded.payload, null, 2))}">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="token-part-body">
+                    <div class="token-json">${JSON.stringify(decoded.payload, null, 2)}</div>
+                </div>
+            </div>
+            
+            <div class="token-part jwt-signature">
+                <div class="token-part-header">
+                    <span>Signature</span>
+                    <button class="token-copy-btn" data-copy="${decoded.signature}">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="token-part-body">
+                    <div style="font-family: var(--font-mono); font-size: 12px; word-break: break-all;">
+                        ${decoded.signature}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 8px;">
+                        Length: ${decoded.signature.length} characters
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        ${decoded.validation && decoded.validation.length > 0 ? `
+            <div class="token-validation">
+                <h4 style="margin-bottom: 12px;">Token Validation</h4>
+                ${decoded.validation.map(validation => `
+                    <div class="validation-item ${validation.type}">
+                        <i class="fas fa-${getValidationIcon(validation.type)}"></i>
+                        <span>${validation.message}</span>
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+    `;
+}
+
+/**
+ * Generate Basic Auth content - FIXED VERSION
+ */
+function generateBasicAuthContent(decoded) {
+    // Store the actual password in a data attribute
+    const actualPassword = decoded.password || '(empty)';
+    const displayPassword = '•'.repeat(decoded.password?.length || 8);
+
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #0891b2;">
+                <div class="token-part-header">
+                    <span>Basic Authentication</span>
+                </div>
+                <div class="token-part-body">
+                    <div style="margin-bottom: 16px;">
+                        <strong>Username:</strong>
+                        <div class="token-json">${decoded.username || '(empty)'}</div>
+                    </div>
+                    <div>
+                        <strong>Password:</strong>
+                        <div class="token-json" 
+                             style="filter: blur(4px); font-family: monospace;" 
+                             id="basicPassword"
+                             data-password="${actualPassword.replace(/"/g, '&quot;')}">
+                            ${displayPassword}
+                        </div>
+                        <button class="btn btn-sm btn-secondary" id="showBasicPasswordBtn"
+                                style="margin-top: 8px; font-size: 12px;">
+                            <i class="fas fa-eye"></i> Show Password
+                        </button>
+                    </div>
+                    ${decoded.isBase64 ? `
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                            <strong>Base64 Encoded:</strong>
+                            <div class="token-json" style="font-size: 11px;">${decoded.raw}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate MAC token content
+ */
+function generateMACContent(decoded) {
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #d97706;">
+                <div class="token-part-header">
+                    <span>MAC Authentication Token</span>
+                </div>
+                <div class="token-part-body">
+                    ${decoded.parts && decoded.parts.length >= 3 ? `
+                        <div style="margin-bottom: 12px;">
+                            <strong>Format:</strong> ${decoded.format}
+                        </div>
+                        <div style="display: grid; grid-template-columns: 100px 1fr; gap: 8px; margin-bottom: 16px;">
+                            <div><strong>ID:</strong></div>
+                            <div class="token-json" style="padding: 4px 8px;">${decoded.id || '(not found)'}</div>
+                            
+                            <div><strong>Nonce:</strong></div>
+                            <div class="token-json" style="padding: 4px 8px;">${decoded.nonce || '(not found)'}</div>
+                            
+                            <div><strong>MAC:</strong></div>
+                            <div class="token-json" style="padding: 4px 8px;">${decoded.mac}</div>
+                        </div>
+                    ` : `
+                        <div class="token-json" style="margin-bottom: 12px;">
+                            ${decoded.decoded || decoded.raw}
+                        </div>
+                    `}
+                    
+                    <div style="font-size: 12px; color: var(--text-tertiary);">
+                        <div>Length: ${decoded.raw.length} characters</div>
+                        <div>Base64 Encoded: ${decoded.isBase64 ? 'Yes' : 'No'}</div>
+                        ${decoded.decoded ? `<div>Decoded Length: ${decoded.decoded.length} characters</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Generate OAuth token content
+ */
+function generateOAuthContent(decoded) {
+    return `
+        <div class="token-parts">
+            <div class="token-part" style="border-left-color: #7c3aed;">
+                <div class="token-part-header">
+                    <span>OAuth Token</span>
+                    <span style="font-size: 12px; color: var(--text-tertiary);">
+                        ${decoded.tokenType.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                </div>
+                <div class="token-part-body">
+                    <div style="margin-bottom: 16px;">
+                        <div class="token-json" style="font-size: 11px; word-break: break-all;">
+                            ${decoded.value}
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 13px;">
+                        <div>
+                            <strong>Length:</strong> ${decoded.length} chars
+                        </div>
+                        <div>
+                            <strong>Type:</strong> ${decoded.tokenType}
+                        </div>
+                        <div>
+                            <strong>Base64:</strong> ${decoded.isBase64 ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>Format:</strong> 
+                            ${decoded.characteristics.isAlphanumeric ? 'Alphanumeric' :
+            decoded.characteristics.hasSpecial ? 'With special chars' : 'Unknown'}
+                        </div>
+                    </div>
+                    
+                    ${decoded.characteristics ? `
+                        <div style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm);">
+                            <strong>Character Analysis:</strong>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; font-size: 12px;">
+                                <div>Letters: ${decoded.characteristics.hasLetters ? 'Yes' : 'No'}</div>
+                                <div>Numbers: ${decoded.characteristics.hasNumbers ? 'Yes' : 'No'}</div>
+                                <div>Uppercase: ${decoded.characteristics.uppercase || 0}</div>
+                                <div>Lowercase: ${decoded.characteristics.lowercase || 0}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Get icon for validation type
+ * @param {string} type - Validation type
+ * @returns {string} Icon name
+ */
+function getValidationIcon(type) {
+    switch (type) {
+        case 'success': return 'check-circle';
+        case 'danger': return 'exclamation-circle';
+        case 'warning': return 'exclamation-triangle';
+        case 'info': return 'info-circle';
+        default: return 'circle';
+    }
+}
+
+/**
+ * Create a custom dialog with HTML content
+ * @param {string} title - Dialog title
+ * @param {string} html - HTML content
+ * @param {string} className - Additional CSS class
+ * @returns {Promise<Object>} Dialog elements
+ */
+/**
+ * Create a custom dialog with HTML content
+ * @param {string} title - Dialog title
+ * @param {string} html - HTML content
+ * @param {string} className - Additional CSS class
+ * @returns {Promise<Object>} Dialog elements and close function
+ */
+function createCustomDialog(title, html, className = '') {
+    return new Promise((resolve) => {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'dialog-overlay';
+        overlay.id = 'customDialogOverlay';
+
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.className = `dialog ${className}`;
+        dialog.innerHTML = html;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Show dialog with animation
+        setTimeout(() => {
+            overlay.classList.add('show');
+            toggleBodyScroll(true);
+        }, 10);
+
+        // Function to close the dialog
+        const closeDialog = () => {
+            overlay.classList.remove('show');
+            toggleBodyScroll(false);
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        };
+
+        // ESC key handler
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeDialog();
+            }
+        });
+
+        // Resolve with close function
+        resolve({ overlay, dialogElement: dialog, closeDialog });
+    });
+}
+
+/**
+ * Set up application keyboard shortcuts
+ */
+function setupAppKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // ... existing shortcuts ...
+
+        // Alt+D to decode token from focused header
+        if (e.altKey && e.key === 'd') {
+            e.preventDefault();
+            const focusedElement = document.activeElement;
+            if (focusedElement && focusedElement.classList.contains('header-input')) {
+                const headerRow = focusedElement.closest('.header-row');
+                if (headerRow) {
+                    const keyInput = headerRow.querySelectorAll('.header-input')[0];
+                    const valueInput = headerRow.querySelectorAll('.header-input')[1];
+                    if (keyInput && valueInput) {
+                        decodeToken(valueInput.value, keyInput.value);
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Simple toggle function
+function toggleBodyScroll(lock) {
+    if (lock) {
+        document.body.classList.add('dialog-lock');
+    } else {
+        document.body.classList.remove('dialog-lock');
+    }
 }
 
 // Start the application
