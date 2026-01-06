@@ -945,11 +945,94 @@ async function addRequestCollectionGroup() {
 
     // Check if group already exists
     if (requestCollectionGroups[groupName]) {
-        await DialogSystem.showInfo(
-            'Group Already Exists',
-            `Request collection group "${groupName}" already exists.`
-        );
-        return;
+        // Create a custom dialog for "Group Already Exists"
+        return new Promise((resolve) => {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'dialog-overlay';
+            overlay.id = 'groupExistsDialogOverlay';
+
+            // Create dialog HTML
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog';
+            dialog.innerHTML = `
+                <div class="dialog-header">
+                    <div class="dialog-title">Group Already Exists</div>
+                    <button class="dialog-close" id="groupExistsCloseBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="dialog-body">
+                    <div class="dialog-alert-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <p class="dialog-message">
+                        Request collection group "${groupName}" already exists.
+                    </p>
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn dialog-btn-primary" id="groupExistsOkBtn">
+                        OK
+                    </button>
+                </div>
+            `;
+
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+
+            // Show dialog with animation
+            setTimeout(() => {
+                overlay.classList.add('show');
+                document.body.classList.add('dialog-lock');
+            }, 10);
+
+            // Cleanup function
+            const cleanup = () => {
+                overlay.classList.remove('show');
+                document.body.classList.remove('dialog-lock');
+                setTimeout(() => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                }, 300);
+            };
+
+            // OK button handler
+            const okBtn = document.getElementById('groupExistsOkBtn');
+            if (okBtn) {
+                okBtn.addEventListener('click', () => {
+                    cleanup();
+                    resolve();
+                });
+            }
+
+            // Close button handler
+            const closeBtn = document.getElementById('groupExistsCloseBtn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    cleanup();
+                    resolve();
+                });
+            }
+
+            // ESC key handler
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    resolve();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+
+            // Overlay click handler
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    cleanup();
+                    resolve();
+                }
+            });
+        });
     }
 
     // Create new empty group
@@ -1150,12 +1233,11 @@ async function saveRequestCollectionRequest() {
     // Format: "HttpMethod EndpointURL"
     const suggestedName = `${method} ${url}`;
 
-    const name = await DialogSystem.prompt({
-        title: 'Save Request',
-        message: 'Enter a name for this request collection request:',
-        defaultValue: suggestedName,
-        placeholder: 'Request name'
-    });
+    const name = await DialogSystem.ask(
+        'Save Request',
+        'Enter a name for this request collection request:',
+        suggestedName
+    );
 
     if (!name) return;
 
@@ -1173,26 +1255,116 @@ async function saveRequestCollectionRequest() {
 
     // Check if request with same name already exists in group
     if (groupRequests[name]) {
-        const overwrite = await DialogSystem.confirm({
-            title: 'Overwrite Request',
-            message: `Request collection request "${name}" already exists in group "${currentGroup}". Overwrite?`,
-            confirmText: 'Overwrite',
-            cancelText: 'Cancel'
+        // Create a simple confirmation dialog using the existing dialog system
+        return new Promise((resolve) => {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'dialog-overlay';
+            overlay.id = 'overwriteDialogOverlay';
+
+            // Create dialog HTML
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog';
+            dialog.innerHTML = `
+                <div class="dialog-header">
+                    <div class="dialog-title">Overwrite Request</div>
+                    <button class="dialog-close" id="overwriteCloseBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="dialog-body">
+                    <div class="dialog-confirm-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <p class="dialog-message">
+                        Request collection request "${name}" already exists in group "${currentGroup}". Overwrite?
+                    </p>
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn dialog-btn-secondary" id="overwriteCancelBtn">
+                        Cancel
+                    </button>
+                    <button class="btn dialog-btn-danger" id="overwriteConfirmBtn">
+                        Overwrite
+                    </button>
+                </div>
+            `;
+
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+
+            // Show dialog
+            setTimeout(() => {
+                overlay.classList.add('show');
+                document.body.classList.add('dialog-lock');
+            }, 10);
+
+            // Event handlers
+            const cleanup = () => {
+                overlay.classList.remove('show');
+                document.body.classList.remove('dialog-lock');
+                setTimeout(() => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                }, 300);
+            };
+
+            // Confirm button
+            document.getElementById('overwriteConfirmBtn').addEventListener('click', () => {
+                cleanup();
+
+                // Save to current group
+                groupRequests[name] = requestData;
+                setRequestCollectionGroupRequests(currentGroup, groupRequests);
+
+                populateRequestCollectionRequests(currentGroup);
+                elements.requestCollectionRequests.value = name;
+
+                showToast(`Request saved to "${currentGroup}" request collection group`, 'success');
+                resolve(true);
+            });
+
+            // Cancel button
+            document.getElementById('overwriteCancelBtn').addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            // Close button
+            document.getElementById('overwriteCloseBtn').addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            // ESC key handler
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    resolve(false);
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+
+            // Overlay click handler
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    cleanup();
+                    resolve(false);
+                }
+            });
         });
+    } else {
+        // Save to current group
+        groupRequests[name] = requestData;
+        setRequestCollectionGroupRequests(currentGroup, groupRequests);
 
-        if (!overwrite) {
-            return;
-        }
+        populateRequestCollectionRequests(currentGroup);
+        elements.requestCollectionRequests.value = name;
+
+        showToast(`Request saved to "${currentGroup}" request collection group`, 'success');
     }
-
-    // Save to current group
-    groupRequests[name] = requestData;
-    setRequestCollectionGroupRequests(currentGroup, groupRequests);
-
-    populateRequestCollectionRequests(currentGroup);
-    elements.requestCollectionRequests.value = name;
-
-    showToast(`Request saved to "${currentGroup}" request collection group`, 'success');
 }
 
 /**
