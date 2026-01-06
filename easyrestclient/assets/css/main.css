@@ -1116,6 +1116,25 @@ textarea.form-control {
         color: var(--primary);
     }
 
+/* Force all footer links to be blue */
+footer a {
+    color: darkblue; /* normal state */
+    text-decoration: none; /* optional: remove underline */
+}
+
+    footer a:visited {
+        color: darkblue; /* visited links stay blue */
+    }
+
+    footer a:hover {
+        color: darkblue; /* optional: darker blue on hover */
+    }
+
+    footer a:active {
+        color: darkblue; /* active (clicked) stays blue */
+    }
+
+
 /* Request Body Action Buttons */
 .payload-actions {
     display: flex;
