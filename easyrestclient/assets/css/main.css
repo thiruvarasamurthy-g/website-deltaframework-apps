@@ -1117,22 +1117,22 @@ textarea.form-control {
     }
 
 /* Force all footer links to be blue */
-footer a {
-    color: #2563eb; /* normal state */
-    text-decoration: none; /* optional: remove underline */
-}
+/*footer a {
+    color: #2563eb;*/ /* normal state */
+    /*text-decoration: none;*/ /* optional: remove underline */
+/*}
 
     footer a:visited {
-        color: #2563eb; /* visited links stay blue */
-    }
+        color: #2563eb;*/ /* visited links stay blue */
+    /*}
 
     footer a:hover {
-        color: #2563eb; /* optional: darker blue on hover */
-    }
+        color: #2563eb;*/ /* optional: darker blue on hover */
+    /*}
 
     footer a:active {
-        color: #2563eb; /* active (clicked) stays blue */
-    }
+        color: #2563eb;*/ /* active (clicked) stays blue */
+    /*}*/
 
 
 /* Request Body Action Buttons */
@@ -1653,3 +1653,12 @@ footer a {
             flex: 1;
             min-height: 0;
         }
+
+.copyright-link {
+    color: #2563eb; /* normal state */
+    text-decoration: none; /* optional: remove underline */
+}
+
+    .copyright-link:hover {
+        color: #60a5fa; /* optional: darker blue on hover */
+    }
