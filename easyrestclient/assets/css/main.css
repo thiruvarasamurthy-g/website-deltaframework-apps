@@ -1102,6 +1102,9 @@ textarea.form-control {
     font-size: 14px;
     margin-top: 8px;
     font-weight: 500;
+    gap: 10px;
+    display: flex;
+    flex-direction: column;
 }
 
 .footer-link {
@@ -1119,20 +1122,20 @@ textarea.form-control {
 /* Force all footer links to be blue */
 /*footer a {
     color: #2563eb;*/ /* normal state */
-    /*text-decoration: none;*/ /* optional: remove underline */
+/*text-decoration: none;*/ /* optional: remove underline */
 /*}
 
     footer a:visited {
         color: #2563eb;*/ /* visited links stay blue */
-    /*}
+/*}
 
     footer a:hover {
         color: #2563eb;*/ /* optional: darker blue on hover */
-    /*}
+/*}
 
     footer a:active {
         color: #2563eb;*/ /* active (clicked) stays blue */
-    /*}*/
+/*}*/
 
 
 /* Request Body Action Buttons */
